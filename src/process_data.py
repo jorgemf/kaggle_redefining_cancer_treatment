@@ -1,3 +1,4 @@
+# coding=utf-8
 import zipfile
 import re
 import os
@@ -44,12 +45,12 @@ def load_raw_dataset(text_file, variants_file):
             raise Exception(
                 'wrong ids in text and variant files {} !+ {}'.format(dataline_text_split[0],
                                                                       dataline_variant_split[0]))
-        id = int(dataline_text_split[0])
-        text = dataline_text_split[1]
-        gene = dataline_variant_split[1]
-        variation = dataline_variant_split[2]
+        id = int(dataline_text_split[0].strip())
+        text = dataline_text_split[1].strip()
+        gene = dataline_variant_split[1].strip()
+        variation = dataline_variant_split[2].strip()
         if len(header_variants) == 4:
-            real_class = int(dataline_variant_split[3])
+            real_class = int(dataline_variant_split[3].strip())
         else:
             real_class = None
         data.append([id, text, gene, variation, real_class])
@@ -87,9 +88,10 @@ def get_text(dataset):
 
 
 RE_BIBLIOGRAPHIC_REFERENCE_1 = re.compile(r"\s*\[[\d\s,]+\]\s*")
-RE_BIBLIOGRAPHIC_REFERENCE_2 = re.compile(r"\s*\(([a-zA-Z\s\.,]+\d{2,4};?)+\s*\)\s*")
-RE_BIBLIOGRAPHIC_REFERENCE_3 = re.compile(r"\s*\([\d,\s]+\)\s*")
-RE_BIBLIOGRAPHIC_REFERENCE_4 = re.compile(r"\s*(\w+ et al\.,?)+")
+RE_BIBLIOGRAPHIC_REFERENCE_2 = re.compile(r"\s*\(([a-zA-Z\s\.,]+\d{2,4}\s*;?)+\s*\)\s*")
+RE_BIBLIOGRAPHIC_REFERENCE_3 = re.compile(r"\s*\[([a-zA-Z\s\.,]+\d{2,4}\s*;?)+\s*\]\s*")
+RE_BIBLIOGRAPHIC_REFERENCE_4 = re.compile(r"\s*\([\d,\s]+\)\s*")
+RE_BIBLIOGRAPHIC_REFERENCE_5 = re.compile(r"\s*(\w+ et al\.,?)+")
 
 RE_FIGURES = re.compile(r"\s*(Fig(ure)?\.? [\w,]+)\s*")
 RE_TABLES = re.compile(r"\s*(Table\.? [\w,]+)\s*")
@@ -103,6 +105,7 @@ def clean_text(text):
     text = re.sub(RE_BIBLIOGRAPHIC_REFERENCE_2, ' ', text)
     text = re.sub(RE_BIBLIOGRAPHIC_REFERENCE_3, ' ', text)
     text = re.sub(RE_BIBLIOGRAPHIC_REFERENCE_4, ' ', text)
+    text = re.sub(RE_BIBLIOGRAPHIC_REFERENCE_5, ' ', text)
     # remove figures
     text = re.sub(RE_FIGURES, "", text)
     # remove tables
@@ -111,8 +114,9 @@ def clean_text(text):
     text = re.sub(RE_EMTPY_PARENTHESES, "", text)
     # add white spaces before and after symbols
     text = text.replace('...', '.')
-    for symbol in ['(', ')', '/', '-', '\xe2', '\'', '%', ':', '?', ', ', '. ', '<', '>', '=', '-']:
-        text = text.replace(symbol, " {} ".format(symbol))
+    for symbol in ['(', ')', '/', '-', '\xe2', '\'', '\"', '%', ':', '?', ', ', '. ', '<', '>',
+                   '=', '-', ';', '!', '°C', '*']:
+        text = text.replace(symbol, ' {} '.format(symbol))
     # remove double white spaces
     text = re.sub(RE_WHITE_SPACES, ' ', text)
     return text
@@ -147,7 +151,7 @@ def show_stats(train_set, test_set):
 def get_genes_articles_from_wikipedia(genes):
     data = []
     for gen in genes:
-        filename = 'data/generated/wikipedia_gen_{}'.format(gen)
+        filename = 'data/generated/gen/wikipedia_gen_{}'.format(gen)
         if not os.path.exists(filename):
             url = 'https://en.wikipedia.org/wiki/{}'.format(gen)
             try:
@@ -194,6 +198,8 @@ def load_or_parse_mutations_dataset(filename, dataset, genes):
 
 def encode_number(number):
     if number < 0.001:
+        return '>number_0001'
+    elif number < 0.01:
         return '>number_001'
     elif number < 0.1:
         return '>number_01'
@@ -201,6 +207,12 @@ def encode_number(number):
         return '>number_1'
     elif number < 10.0:
         return '>number_10'
+    elif number < 25.0:
+        return '>number_25'
+    elif number < 50.0:
+        return '>number_50'
+    elif number < 75.0:
+        return '>number_75'
     elif number < 100.0:
         return '>number_100'
     else:
@@ -246,7 +258,7 @@ def is_mutation(word, genes):
 
 def split_mutation(word):
     word = word.strip()
-    for symbol in ['del', 'ins', 'dup', 'trunc', 'splice', 'fs', 'null', 'Fusion']:
+    for symbol in ['del', 'ins', 'dup', 'trunc', 'splice', 'fs', 'null', 'Fusion', '#', '+']:
         word = word.replace(symbol, ' >{} '.format(symbol))
     i = 0
     new_words = []
@@ -264,26 +276,32 @@ def split_mutation(word):
             i += 1
     return new_words
 
+
 def load_or_create_dataset_word2vec(filename, text_samples, vocabulary_size=30000):
-    if not os.path.exists('{}_{}'.format(filename, vocabulary_size)):
+    filename = '{}_{}'.format(filename, vocabulary_size)
+    filename_dict = '{}_dict'.format(filename)
+    if not os.path.exists(filename):
         text_lines = []
         for text_sample in text_samples:
             sentences = re.split('\n|\s\.', text_sample.lower())
             for sentence in sentences:
                 words = sentence.split()
-                words = list([word.strip() for word in words])
-                text_lines.append(words)
+                if len(words) > 0:
+                    words.append('.')
+                    words = list([word.strip() for word in words])
+                    text_lines.append(words)
         symbols_count = group_count(text_lines)
         symbols_ordered_by_count = sorted(symbols_count.items(), key=lambda x: x[1], reverse=True)
         total_symbols = len(symbols_ordered_by_count)
         print('Total symbols: {}'.format(total_symbols))
-        unknown_symbols = symbols_ordered_by_count[vocabulary_size:]
-        known_symbols = symbols_ordered_by_count[:vocabulary_size]
+        print('Vocabulary size: {}'.format(vocabulary_size))
+        unknown_symbols = symbols_ordered_by_count[vocabulary_size-1:]
+        known_symbols = symbols_ordered_by_count[:vocabulary_size-1]
         symbols_dict = {}
-        for symbol in unknown_symbols:
+        for symbol, _ in unknown_symbols:
             symbols_dict[symbol] = 0
         counter = 1
-        for symbol in known_symbols:
+        for symbol, _ in known_symbols:
             symbols_dict[symbol] = counter
             counter += 1
         encoded_text = []
@@ -294,22 +312,40 @@ def load_or_create_dataset_word2vec(filename, text_samples, vocabulary_size=3000
             encoded_sentence = []
             for word in sentence:
                 encoded_sentence.append(symbols_dict[word])
-            encoded_text.append(encoded_sentence)
+            if len(encoded_sentence) > 0:
+                encoded_text.append(encoded_sentence)
         print('Total sentences: {}'.format(len(text_lines)))
         print('Total words: {}'.format(words_count))
+        print('words/sentences: {}'.format(float(words_count) / float(len(text_lines))))
 
+        with open(filename_dict, 'wb') as f:
+            for symbol in sorted(symbols_dict.keys()):
+                f.write('{} {}\n'.format(symbol, symbols_dict[symbol]))
         with open(filename, 'wb') as f:
-            f.writelines(text_lines)
+            for sentence in encoded_text:
+                f.write(' '.join(str(word) for word in sentence))
+                f.write('\n')
+        with open('{}_count'.format(filename), 'wb') as f:
+            for symbol, count in symbols_ordered_by_count:
+                f.write('{} = {}\n'.format(symbol, count))
+
+    return load_word2vec_data(filename, filename_dict)
+
+
+def load_word2vec_data(filename, filename_dict):
+    with open(filename_dict, 'r') as f:
+        symbols_dict = {}
+        for line in f.readlines():
+            data = line.split()
+            symbol = data[0]
+            encoded = int(data[1])
+            symbols_dict[symbol] = encoded
+    encoded_text = []
     with open(filename, 'r') as f:
-            text_lines = f.readlines()
+        for line in f.readlines():
+            encoded_text.append([int(word) for word in line.split()])
     return symbols_dict, encoded_text
 
-
-
-    for datasample in dataset:
-        all_text.extend(datasample[1].split(' '))
-    symbols = group_count(all_text)
-    # TODO
 
 if __name__ == '__main__':
     print('Extract zip files if not already done...')
