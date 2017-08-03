@@ -4,6 +4,8 @@ import math
 import numpy as np
 import random
 import csv
+import time
+from datetime import timedelta
 
 
 def generate_training_samples(text_lines, epochs, window_adjacent_words, close_words_size,
@@ -12,6 +14,7 @@ def generate_training_samples(text_lines, epochs, window_adjacent_words, close_w
     for k, v in word_frequency_dict.items():
         probabilities_dict[k] = -math.log(v)
     for _ in range(epochs):
+        random.shuffle(text_lines)
         for text_line in text_lines:
             probabilities_tl = [probabilities_dict[w] for w in text_line]
             len_text_line = len(text_line)
@@ -52,7 +55,7 @@ def select_random_labels(labels, num_labels, probabilities):
     return samples
 
 
-def data_generator_buffered(data_generator, buffer_size=10000, randomize=True):
+def data_generator_buffered(data_generator, buffer_size=100000, randomize=True):
     buffer = []
     try:
         while len(buffer) < buffer_size:
@@ -108,36 +111,38 @@ def load_word2vec_data(filename, vocabulary_size=30000):
     return symbols_dict, encoded_text, word_frequency_dict
 
 
-def model(batch_size, vocabulary_size, embedding_size, num_negative_samples):
+def model(batch_size, vocabulary_size, embedding_size, num_negative_samples,
+          learning_rate_initial, learning_rate_decay, learning_rate_decay_steps):
     graph = tf.Graph()
     with graph.as_default():
+        global_step = tf.placeholder(tf.int32, name='global_step')
         input_label = tf.placeholder(tf.int32, shape=[batch_size])
         output_word = tf.placeholder(tf.int32, shape=[batch_size])
+
         input_label_reshaped = tf.reshape(input_label, [batch_size])
         output_word_reshaped = tf.reshape(output_word, [batch_size, 1])
 
-        # Ops and variables pinned to the CPU because of missing GPU implementation
-        with tf.device('/cpu'):
-            matrix_dimension = [vocabulary_size, embedding_size]
-            embeddings = tf.Variable(tf.random_uniform(matrix_dimension, -1.0, 1.0),
-                                     name='embeddings')
+        matrix_dimension = [vocabulary_size, embedding_size]
+        embeddings = tf.Variable(tf.random_uniform(matrix_dimension, -1.0, 1.0), name='embeddings')
+        embed = tf.nn.embedding_lookup(embeddings, input_label_reshaped)
 
-            embed = tf.nn.embedding_lookup(embeddings, input_label_reshaped)
-
-            # Construct the variables for the NCE loss
-            nce_weights = tf.Variable(
-                tf.truncated_normal(matrix_dimension, stddev=1.0 / math.sqrt(embedding_size)))
-            nce_biases = tf.Variable(tf.zeros([vocabulary_size]))
+        # Construct the variables for the NCE loss
+        stddev = 1.0 / math.sqrt(embedding_size)
+        nce_weights = tf.Variable(tf.truncated_normal(matrix_dimension, stddev=stddev))
+        nce_biases = tf.Variable(tf.zeros([vocabulary_size]))
 
         nce_loss = tf.nn.nce_loss(weights=nce_weights, biases=nce_biases,
                                   labels=output_word_reshaped,
                                   inputs=embed, num_sampled=num_negative_samples,
-                                  num_classes=vocabulary_size, partition_strategy='div')
+                                  num_classes=vocabulary_size)
         loss = tf.reduce_mean(nce_loss)
-        # optimizer
-        optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
+        # learning rate & optimizer
+        learning_rate = tf.train.exponential_decay(learning_rate_initial, global_step,
+                                                   learning_rate_decay_steps, learning_rate_decay,
+                                                   staircase=True, name='learning_rate')
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
         # summaries and moving average
-        ema = tf.train.ExponentialMovingAverage(0.99)
+        ema = tf.train.ExponentialMovingAverage(0.9)
         ema_assign = ema.apply([loss])
         with tf.control_dependencies([optimizer]):
             training_op = tf.group(ema_assign)
@@ -146,17 +151,20 @@ def model(batch_size, vocabulary_size, embedding_size, num_negative_samples):
         # initializing function
         init = tf.global_variables_initializer()
 
-    return graph, input_label, output_word, init, loss, average_loss, training_op, embeddings
+    return graph, global_step, input_label, output_word, init, loss, average_loss, training_op, learning_rate, embeddings
 
 
 if __name__ == '__main__':
-    epochs = 10  # iterations over the whole dataset
+    epochs = 1  # iterations over the whole dataset
     batch_size = 128  # batch size for the training
     embedding_size = 128  # embedding size
     window_adjacent_words = 1  # adjacent words to be added to the context
     close_words_size = 2  # close words (non-adjacent) to be added to the context
     window_close_words = 6  # maximum distance between the target word and the close words
     negative_num_samples = 64  # Number of negative examples to sample.
+    learning_rate_initial = 0.1
+    learning_rate_decay = 0.928
+    learning_rate_decay_steps = 10000
 
     print('Loading dataset...')
     symbols_dict, encoded_text, word_frequency_dict = load_word2vec_data(
@@ -170,20 +178,31 @@ if __name__ == '__main__':
     data_generator = data_generator_buffered(data_generator)
 
     print('Creating graph...')
-    graph, input_label, output_word, init, loss, average_loss, optimizer, embeddings = \
-        model(batch_size, vocabulary_size, embedding_size, negative_num_samples)
+    graph, global_step, input_label, output_word, init, loss, average_loss, optimizer, learning_rate, embeddings = \
+        model(batch_size, vocabulary_size, embedding_size, negative_num_samples,
+              learning_rate_initial, learning_rate_decay, learning_rate_decay_steps)
 
     print('Training...')
-    with tf.Session(graph=graph) as session:
+    t1 = time.time()
+    # set tensorflow to not to use all memory so you can run multiple process on the gpu
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth=True
+    with tf.Session(graph=graph, config=config) as session:
         init.run()
         step = 0
         try:
             for words, labels in generate_batch(data_generator, batch_size):
-                _, _, loss_val = session.run([optimizer, loss, average_loss],
-                                             feed_dict={input_label: labels, output_word: words})
+                lr, _, _, loss_val = session.run([learning_rate, optimizer, loss, average_loss],
+                                                 feed_dict={
+                                                     global_step: step,
+                                                     input_label: labels,
+                                                     output_word: words,
+                                                 })
                 step += 1
-                if step % 10000 == 0:
-                    print('step: {} loss: {:0.4f}'.format(step, loss_val))
+                if step % 100000 == 0:
+                    elapsed_time = str(timedelta(seconds=time.time() - t1))
+                    message = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed: {}'
+                    print(message.format(step, loss_val, lr, elapsed_time))
         except StopIteration:
             pass
 
@@ -191,6 +210,6 @@ if __name__ == '__main__':
         embeddings_eval = embeddings.eval()
     norm = np.sqrt(np.sum(np.square(embeddings_eval)))
     normalized_embeddings = embeddings_eval / norm
-    with open('data/generated/embeddings', 'wb') as file:
+    with open('data/generated/embeddings_{}'.format(embedding_size), 'wb') as file:
         writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer.writerows(normalized_embeddings)
