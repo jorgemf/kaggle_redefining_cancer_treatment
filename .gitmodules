@@ -1,0 +1,4 @@
+[submodule "src/tensorport_template"]
+	path = src/tensorport_template
+	url = https://github.com/jorgemf/tensorport-template
+	branch = master
