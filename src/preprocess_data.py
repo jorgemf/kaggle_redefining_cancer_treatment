@@ -68,7 +68,8 @@ def save_csv_dataset(filename, dataset):
     """
     with open(os.path.join(DIR_GENERATED_DATA, filename), 'wb') as file:
         writer = csv.writer(file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        for d in dataset:
+        # for d in dataset:
+        for i, d in enumerate(dataset):
             writer.writerow([str(d.id), d.text, d.gene, d.variation, str(d.real_class)])
 
 
@@ -163,18 +164,22 @@ def load_raw_dataset(text_file, variants_file):
 ####################################################################################################
 
 
-def load_or_clean_text_dataset(filename, dataset):
+def load_or_clean_text_dataset(filename, dataset,
+                               saving_fn=save_csv_dataset,
+                               loading_fn=load_csv_dataset):
     """
     Loads the clean dataset from a file if it exits or cleans the dataset and saves it to the file
     :param srt filename: the filename to store the clean dataset or loads it.
     :param List[DataSample] dataset: dataset
     :return: List[DataSample]
+    :param saving_fn: The function used to save the dataset
+    :param loading_fn: The function used to load the dataset
     """
-    if not os.path.exists(filename):
+    if not os.path.exists(os.path.join(DIR_GENERATED_DATA, filename)):
         for datasample in dataset:
             datasample.text = clean_text(datasample.text)
-        save_csv_dataset(filename, dataset)
-    return load_csv_dataset(filename)
+        saving_fn(filename, dataset)
+    return loading_fn(filename)
 
 
 # regular expressions to clean up the text
@@ -304,7 +309,7 @@ def get_genes_articles_from_wikipedia(genes):
         with open(filename, 'r') as f:
             text_lines = f.readlines()
             text = '\n'.join(text_lines)
-        data.append([gen, text])
+        data.append(WikipediaGene(gen, text))
     return data
 
 
@@ -323,7 +328,7 @@ def load_or_parse_mutations_dataset(filename, dataset, genes,
     :param loading_fn: The function used to load the dataset
     :return List[DataSample|WikipediaGene]:
     """
-    if not os.path.exists(filename):
+    if not os.path.exists(os.path.join(DIR_GENERATED_DATA, filename)):
         for datasample in dataset:
             words = datasample.text.split()
             parsed_words = []
@@ -333,7 +338,7 @@ def load_or_parse_mutations_dataset(filename, dataset, genes,
                 else:
                     parsed_words.append(word)
             datasample.text = ' '.join(parsed_words)
-            saving_fn(filename, dataset)
+        saving_fn(filename, dataset)
     return loading_fn(filename)
 
 
@@ -415,7 +420,7 @@ def load_or_parse_numbers_dataset(filename, dataset,
     :param loading_fn: The function used to load the dataset
     :return List[DataSample|WikipediaGene]: the datset
     """
-    if not os.path.exists(filename):
+    if not os.path.exists(os.path.join(DIR_GENERATED_DATA, filename)):
         for datasample in dataset:
             words = datasample.text.split()
             parsed_words = []
@@ -426,7 +431,7 @@ def load_or_parse_numbers_dataset(filename, dataset,
                 except ValueError:
                     parsed_words.append(word)
             datasample.text = ' '.join(parsed_words)
-            saving_fn(filename, dataset)
+        saving_fn(filename, dataset)
     return loading_fn(filename)
 
 
@@ -463,6 +468,12 @@ def encode_number(number):
 
 
 if __name__ == '__main__':
+    if not os.path.exists(DIR_GENERATED_DATA):
+        os.makedirs(DIR_GENERATED_DATA)
+    if not os.path.exists(DIR_DATA_WORD2VEC):
+        os.makedirs(DIR_DATA_WORD2VEC)
+    if not os.path.exists(DIR_WIKIPEDIA_GENES):
+        os.makedirs(DIR_WIKIPEDIA_GENES)
     print('Extract zip files if not already done...')
     extract_zip_files()
     print('Load raw data...')
@@ -489,11 +500,12 @@ if __name__ == '__main__':
     print('Download articles from wikipedia about genes...')
     genes_articles = get_genes_articles_from_wikipedia(genes)
     print('Clean articles from wikipedia or load already clean data...')
-    genes_articles = load_or_clean_text_dataset('wikipedia_text_clean', genes_articles)
+    genes_articles = load_or_clean_text_dataset('wikipedia_text_clean', genes_articles,
+                                                saving_fn=save_csv_wikipedia_gen,
+                                                loading_fn=load_csv_wikipedia_gen)
     print('Parse mutations to tokens from wikipedia articles...')
     genes_articles = load_or_parse_mutations_dataset('wikipedia_mutations_parsed',
-                                                     genes_articles,
-                                                     genes,
+                                                     genes_articles, genes,
                                                      saving_fn=save_csv_wikipedia_gen,
                                                      loading_fn=load_csv_wikipedia_gen)
     print('Parse numbers to tokens from wikipedia articles...')

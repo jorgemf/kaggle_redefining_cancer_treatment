@@ -152,8 +152,8 @@ class MyTrainer(trainer.Trainer):
         self.global_step = training_util.get_or_create_global_step()
 
         # inputs
-        self.input_label = tf.placeholder(tf.int32, shape=[batch_size])
-        self.output_word = tf.placeholder(tf.int32, shape=[batch_size])
+        self.input_label = tf.placeholder(tf.int32, shape=[batch_size], name='input_label')
+        self.output_word = tf.placeholder(tf.int32, shape=[batch_size], name='output_word')
         input_label_reshaped = tf.reshape(self.input_label, [batch_size])
         output_word_reshaped = tf.reshape(self.output_word, [batch_size, 1])
 
@@ -178,7 +178,8 @@ class MyTrainer(trainer.Trainer):
                                                         learning_rate_decay_steps,
                                                         learning_rate_decay,
                                                         staircase=True, name='learning_rate')
-        self.optimizer = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
+        sgd = tf.train.GradientDescentOptimizer(self.learning_rate)
+        self.optimizer = sgd.minimize(self.loss, global_step=self.global_step)
 
         # summaries and moving average
         ema = tf.train.ExponentialMovingAverage(0.9)
@@ -195,19 +196,19 @@ class MyTrainer(trainer.Trainer):
         return None
 
     def train_step(self, session, graph_data):
-        # we ignore the parent loop and do all the iterations here
         try:
             for words, labels in generate_batch(data_generator, W2V_BATCH_SIZE):
-                lr, _, _, loss_val, step = session.run([self.learning_rate, self.optimizer,
+                lr, _, _, loss_val, step = session.run([self.learning_rate, self.training_op,
                                                         self.loss, self.average_loss,
                                                         self.global_step],
                                                        feed_dict={
                                                            self.input_label: labels,
                                                            self.output_word: words,
                                                        })
-                if step % 100000 == 0:
+                # if step % 100000 == 0:
+                if step % 100 == 0:
                     elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
-                    m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {:0.1f}'
+                    m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
                     print(m.format(step, loss_val, lr, elapsed_time))
         except StopIteration:
             pass
@@ -216,7 +217,8 @@ class MyTrainer(trainer.Trainer):
         # restore latest checkpoint
         ckpt = tf.train.get_checkpoint_state(self.log_dir)
         if ckpt:
-            self.saver.restore(session, ckpt.model_checkpoint_path)
+            print('Restoring model from {}...'.format(ckpt.model_checkpoint_path))
+            # self.saver.restore(session, ckpt.model_checkpoint_path)
         self.init_time = time.time()
 
     def save_embeddings(self, session, graph_data):

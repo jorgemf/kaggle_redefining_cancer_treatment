@@ -62,10 +62,10 @@ def load_or_create_dataset_word2vec(filename, text_samples, vocabulary_size=VOCA
     symbols and a list of sentences where each sentence is a list of int and a dictionary with
     the frequencies of the words
     """
-    filename = '{}_{}'.format(filename, vocabulary_size)
-    filename_dict = '{}_dict'.format(filename)
-    filename_count = '{}_count'.format(filename)
-    if not os.path.exists(filename):
+    filename_vocabulary = '{}_{}'.format(filename, vocabulary_size)
+    filename_dict = '{}_dict'.format(filename_vocabulary)
+    filename_count = '{}_count'.format(filename_vocabulary)
+    if not os.path.exists(os.path.join(DIR_DATA_WORD2VEC, filename_vocabulary)):
         text_lines = []
         for text_sample in text_samples:
             sentences = re.split('\n|\s\.', text_sample.lower())
@@ -106,7 +106,7 @@ def load_or_create_dataset_word2vec(filename, text_samples, vocabulary_size=VOCA
         with open(os.path.join(DIR_DATA_WORD2VEC, filename_dict), 'wb') as f:
             for symbol in sorted(symbols_dict.keys()):
                 f.write('{} {}\n'.format(symbol, symbols_dict[symbol]))
-        with open(os.path.join(DIR_DATA_WORD2VEC, filename), 'wb') as f:
+        with open(os.path.join(DIR_DATA_WORD2VEC, filename_vocabulary), 'wb') as f:
             for sentence in encoded_text:
                 f.write(' '.join(str(word) for word in sentence))
                 f.write('\n')
@@ -114,7 +114,7 @@ def load_or_create_dataset_word2vec(filename, text_samples, vocabulary_size=VOCA
             for symbol, count in symbols_ordered_by_count:
                 f.write('{} = {}\n'.format(symbol, count))
 
-    return load_word2vec_data(filename, filename_dict)
+    return load_word2vec_data(filename)
 
 
 if __name__ == '__main__':
