@@ -5,7 +5,7 @@ import random
 import csv
 import time
 from datetime import timedelta
-from tensorport_template import trainer
+import trainer
 from tensorflow.python.training import training_util
 from word2vec_process_data import load_word2vec_data
 from configuration import *
