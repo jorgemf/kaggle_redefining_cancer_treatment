@@ -157,7 +157,7 @@ class MyTrainer(trainer.Trainer):
         input_label_reshaped = tf.reshape(self.input_label, [batch_size])
         output_word_reshaped = tf.reshape(self.output_word, [batch_size, 1])
 
-        # embbedings
+        # embeddings
         matrix_dimension = [vocabulary_size, embedding_size]
         self.embeddings = tf.Variable(tf.random_uniform(matrix_dimension, -1.0, 1.0),
                                       name='embeddings')
@@ -195,6 +195,9 @@ class MyTrainer(trainer.Trainer):
 
         return None
 
+    def create_graph(self):
+        return self.model()
+
     def train_step(self, session, graph_data):
         try:
             for words, labels in generate_batch(data_generator, W2V_BATCH_SIZE):
@@ -205,28 +208,22 @@ class MyTrainer(trainer.Trainer):
                                                            self.input_label: labels,
                                                            self.output_word: words,
                                                        })
-                # if step % 100000 == 0:
-                if step % 100 == 0:
+                if step % 100000 == 0:
                     elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
                     m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
                     print(m.format(step, loss_val, lr, elapsed_time))
         except StopIteration:
             pass
 
-    def preload_model(self, session, graph_data):
-        # restore latest checkpoint
-        ckpt = tf.train.get_checkpoint_state(self.log_dir)
-        if ckpt:
-            print('Restoring model from {}...'.format(ckpt.model_checkpoint_path))
-            # self.saver.restore(session, ckpt.model_checkpoint_path)
+    def after_create_session(self, session, coord):
         self.init_time = time.time()
 
-    def save_embeddings(self, session, graph_data):
+    def end(self, session):
         print('Saving embeddings in text format...')
         embeddings_eval = self.embeddings.eval()
         norm = np.sqrt(np.sum(np.square(embeddings_eval)))
         normalized_embeddings = embeddings_eval / norm
-        embeddings_file = 'embeddings_{}'.format(EMBEDDINGS_SIZE)
+        embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
         with open(os.path.join(DIR_DATA_WORD2VEC, embeddings_file), 'wb') as file:
             writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             writer.writerows(normalized_embeddings)
@@ -242,8 +239,4 @@ if __name__ == '__main__':
     data_generator = data_generator_buffered(data_generator)
 
     # start the training
-    trainer = MyTrainer()
-    trainer.train(create_graph_fn=trainer.model,
-                  train_step_fn=trainer.train_step,
-                  pre_train_fn=trainer.preload_model,
-                  post_train_fn=trainer.save_embeddings)
+    MyTrainer().train()

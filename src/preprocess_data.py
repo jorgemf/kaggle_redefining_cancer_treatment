@@ -8,6 +8,7 @@ import sys
 import urllib2
 from bs4 import BeautifulSoup
 import unicodedata
+import copy
 
 # increase max csv file in order to load the datasets
 csv.field_size_limit(sys.maxsize)
@@ -121,6 +122,10 @@ class DataSample(object):
         self.gene = gene
         self.variation = variation
         self.real_class = real_class
+
+    def __copy__(self):
+        text_copy = copy.deepcopy(self.text)
+        return DataSample(self.id, text_copy, self.gene, self.variation, self.real_class)
 
 
 def load_raw_dataset(text_file, variants_file):
