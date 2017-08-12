@@ -134,12 +134,9 @@ class MyTrainer(trainer.Trainer):
     """
 
     def __init__(self):
-        dataset_spec = trainer.DatasetSpec('word2vec_train', DIR_DATA_WORD2VEC, LOCAL_REPO,
-                                           LOCAL_REPO_W2V_PATH)
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        super(MyTrainer, self).__init__(dataset_spec, DIR_W2V_LOGDIR,
-                                        monitored_training_session_config=config)
+        super(MyTrainer, self).__init__(DIR_W2V_LOGDIR, monitored_training_session_config=config)
 
     def model(self,
               batch_size=W2V_BATCH_SIZE,
