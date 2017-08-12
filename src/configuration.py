@@ -1,16 +1,17 @@
 import os
+from trainer import get_data_path
 
 # directories for the data
 
 DIR_DATA = 'data'
-DIR_GENERATED_DATA = os.path.join(DIR_DATA, 'generated')
+DIR_GENERATED_DATA = get_data_path(dataset_name='jorgemf/kaggle-redefining-cancere-treatment',
+                                   local_root=DIR_DATA,
+                                   local_repo='generated')
 DIR_DATA_WORD2VEC = os.path.join(DIR_GENERATED_DATA, 'word2vec')
 DIR_DATA_TEXT_CLASSIFICATION = os.path.join(DIR_GENERATED_DATA, 'text_classification')
+# log dirs routes are automatically handle in the trainer
 DIR_W2V_LOGDIR = os.path.join('.', 'model', 'train', 'word2vec')
 DIR_TC_LOGDIR = os.path.join('.', 'model', 'train', 'text_classification')
-LOCAL_REPO = ''  # TODO
-LOCAL_REPO_W2V_PATH = 'word2vec'
-LOCAL_REPO_TC_PATH = 'text_classification'
 
 # pre process data
 
