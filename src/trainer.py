@@ -4,9 +4,10 @@ import json
 import argparse
 import time
 
-from tensorport import get_data_path, get_logs_path
+import tensorport
 import tensorflow as tf
 from tensorflow.python.training import session_run_hook
+from tensorflow.python.training.basic_session_run_hooks import StopAtStepHook
 
 
 class TaskSpec(object):
@@ -58,27 +59,40 @@ def get_task_spec():
     return TaskSpec()
 
 
-class DatasetSpec(object):
+def get_logs_path(path):
+    """
+    Log dir specification, see: get_logs_path,
+    https://tensorport.com/documentation/api/#get_logs_path
+    :param str path: the path for the logs dir
+    :return str: the real path for the logs
+    """
+    if path.startswith('gs://'):
+        return path
+    return tensorport.get_logs_path(path)
+
+
+def get_data_path(dataset_name, local_root, local_repo, path=''):
     """
     Dataset specification, see: get_data_path,
     https://tensorport.com/documentation/api/#get_data_path
+    :param str name: TensorPort dataset repository name,
+        e.g. user_name/repo_name
+    :param str local_root: specifies the root directory for dataset.
+          e.g. /home/username/datasets, gs://my-project/my_dir
+    :param str local_repo: specifies the repo name inside the root data path.
+          e.g. my_repo_data/
+    :param str path: specifies the path inside the repository, (optional)
+          e.g. train
+    :return str: the real path of the dataset
     """
-
-    def __init__(self, dataset_name, local_root, local_repo, path=''):
-        """
-        :param string name: TensorPort dataset repository name,
-            e.g. tensorport/mnist
-        :param string local_root: specifies the root directory for dataset.
-              e.g. /home/username/datasets
-        :param stromg local_repo: specifies the repo name inside the root data path.
-              e.g. mnist
-        :param string path: specifies the path inside the repository, (optional)
-              e.g. train
-        """
-        self.name = dataset_name
-        self.local_root = local_root
-        self.local_repo = local_repo
-        self.path = path
+    if local_root.startswith('gs://'):
+        return local_root
+    return tensorport.get_data_path(
+        dataset_name=dataset_name,
+        local_root=local_root,
+        local_repo=local_repo,
+        path=path
+    )
 
 
 class Trainer(session_run_hook.SessionRunHook):
@@ -87,13 +101,15 @@ class Trainer(session_run_hook.SessionRunHook):
     in the MonitoredTrainingSession
     """
 
-    def __init__(self, dataset_spec, log_dir, max_time=-1,
+    def __init__(self, log_dir, max_time=None, num_steps=None, max_steps=None,
                  save_checkpoint_secs=600, save_summaries_steps=100, log_step_count_steps=100,
                  monitored_training_session_config=None):
         """
-        :param DatasetSpec dataset_spec: dataset specification
         :param str log_dir: directory where logs are stored
-        :param int max_time: max time to run the training, by default is -1 to run indefinitely
+        :param int max_time: max time to run the training, by default isNone to run indefinitely
+        :param int num_steps: number of steps to run the current training process, by default is
+        None to run indefinitely
+        :param int max_steps: step after which to stop, by default is None to run indefinitely
         :param int save_checkpoint_secs: seconds to save the checkpoints
         :param int save_summaries_steps: steps to save the summaries
         :param int log_step_count_steps: steps to log the steps_count
@@ -101,20 +117,15 @@ class Trainer(session_run_hook.SessionRunHook):
         the configuration for the monitored training session
         Activate these hooks if is_chief==True`, ignore otherwise.
         """
-        self.data_dir = get_data_path(
-            dataset_name=dataset_spec.name,
-            local_root=dataset_spec.local_root,
-            local_repo=dataset_spec.local_repo,
-            path=dataset_spec.path
-        )
-        self.log_dir = get_logs_path(root=log_dir)
+        self.log_dir = get_logs_path(log_dir)
         self.save_checkpoint_secs = save_checkpoint_secs
         self.save_summaries_steps = save_summaries_steps
         self.log_step_count_steps = log_step_count_steps
         self.monitored_training_session_config = monitored_training_session_config
         self.max_time = max_time
+        self.num_steps = num_steps
+        self.max_steps = max_steps
         logging.info('Log dir: {}', self.log_dir)
-        logging.info('Data dir: {}', self.data_dir)
 
     def train(self):
         """
@@ -144,8 +155,10 @@ class Trainer(session_run_hook.SessionRunHook):
             if hooks is None:
                 hooks = []
             hooks.append(self)
-            if self.max_time > 0:
+            if self.max_time and self.max_time > 0:
                 hooks.append(StopAtTimeHook(self.max_time))
+            if (self.max_steps or self.num_steps) and (self.max_steps > 0 and self.num_steps > 0):
+                StopAtStepHook(num_steps=self.num_steps, last_step=self.max_steps)
 
             logging.info('Creating MonitoredTrainingSession...')
             with tf.train.MonitoredTrainingSession(
