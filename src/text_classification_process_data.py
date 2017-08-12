@@ -23,13 +23,16 @@ def transform_words_in_ids(dataset, symbols_dict):
         parsed_sentences = []
         for sentence in sentences:
             encoded_sentence = []
-            for word in sentence.split() + ['.']:
-                word = word.lower()
-                if word not in symbols_dict:
-                    print('word "{}" not in dict, parsed to unknown token 0'.format(word))
-                    encoded_sentence.append(0)
-                else:
-                    encoded_sentence.append(symbols_dict[word.lower()])
+            words = sentence.split()
+            if len(words) > 0:
+                words.append('.')
+                words = list([word.strip().lower() for word in words])
+                for word in words:
+                    if word not in symbols_dict:
+                        print('word "{}" not in dict, parsed to unknown token 0'.format(word))
+                        encoded_sentence.append(0)
+                    else:
+                        encoded_sentence.append(symbols_dict[word.lower()])
             if len(encoded_sentence) > 0:
                 parsed_sentences.append(encoded_sentence)
         datasample.text = parsed_sentences
@@ -71,9 +74,9 @@ def remove_random_sentences(dataset, ratio_to_remove=TD_DATA_SENTENCE_REMOVE_PER
     return dataset
 
 
-def save_text_classification_dataset(filename, train_set):
+def save_text_classification_dataset(filename, dataset):
     with(open(os.path.join(DIR_DATA_TEXT_CLASSIFICATION, filename)), 'wb') as file:
-        for data in train_set:
+        for data in dataset:
             file.write('{} '.format(data.real_class))
             for sentence in data.text:
                 for word in sentence:
@@ -85,10 +88,24 @@ if __name__ == '__main__':
     print('Generate text data augmentation for text classification model...')
     train_set = load_csv_dataset('train_set_numbers_parsed')
     print('Transform words into ids')
-    transform_words_in_ids(train_set, load_word2vec_dict('word2vec_dataset'))
+    word_dict = load_word2vec_dict('word2vec_dataset')
+    transform_words_in_ids(train_set, word_dict)
     print('Balancing classes...')
     train_set = balance_class(train_set)
     print('Removing random sentences...')
     train_set = remove_random_sentences(train_set)
     print('Saving final training dataset...')
     save_text_classification_dataset('train_set', train_set)
+    print('Generating samples for test set...')
+    test_set = load_csv_dataset('train_set_numbers_parsed')
+    transform_words_in_ids(test_set, word_dict)
+    save_text_classification_dataset('test_set', test_set)
+    print('Calculating longest test...')
+    l = 0
+    for data in train_set + test_set:
+        dl = 0
+        for sentence in data.text:
+            dl += len(sentence)
+        if dl > l:
+            l = dl
+    print('Longest sequence of test is {}'.format(l))

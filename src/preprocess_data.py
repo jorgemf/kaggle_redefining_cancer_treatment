@@ -199,6 +199,7 @@ RE_FIGURES = re.compile(r"\s*(Fig(ure)?\.? [\w,]+)\s*")
 RE_TABLES = re.compile(r"\s*(Table\.? [\w,]+)\s*")
 RE_WHITE_SPACES = re.compile(r"\s+")
 RE_EMTPY_PARENTHESES = re.compile(r"\(\s*(and)?\s*\)")
+RE_URLS = re.compile(r"((http|ftp)s?:\/\/(?:www\.|(?!www)|)[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|(www|ftp)\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|(http|ftp)s?:\/\/(?:www\.|(?!www)|(ftp))[a-zA-Z0-9]\.[^\s]{2,}|(www|ftp)\.[a-zA-Z0-9]\.[^\s]{2,})")
 
 
 def clean_text(text):
@@ -215,15 +216,17 @@ def clean_text(text):
     text = re.sub(RE_BIBLIOGRAPHIC_REFERENCE_4, ' ', text)
     text = re.sub(RE_BIBLIOGRAPHIC_REFERENCE_5, ' ', text)
     # remove figures
-    text = re.sub(RE_FIGURES, "", text)
+    text = re.sub(RE_FIGURES, '', text)
     # remove tables
-    text = re.sub(RE_TABLES, "", text)
+    text = re.sub(RE_TABLES, '', text)
+    # remove urls
+    text = re.sub(RE_URLS, ' ', text)
     # remove empty parentheses
-    text = re.sub(RE_EMTPY_PARENTHESES, "", text)
+    text = re.sub(RE_EMTPY_PARENTHESES, '', text)
     # add white spaces before and after symbols
     text = text.replace('...', '.')
     for symbol in ['(', ')', '/', '-', '\xe2', '\'', '\"', '%', ':', '?', ', ', '. ', '<', '>',
-                   '=', '-', ';', '!', '°C', '*']:
+                   '=', '-', ';', '!', '°C', '*', '[', ']' ]:
         text = text.replace(symbol, ' {} '.format(symbol))
     # remove double white spaces
     text = re.sub(RE_WHITE_SPACES, ' ', text)

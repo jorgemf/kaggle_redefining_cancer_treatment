@@ -68,12 +68,12 @@ def load_or_create_dataset_word2vec(filename, text_samples, vocabulary_size=VOCA
     if not os.path.exists(os.path.join(DIR_DATA_WORD2VEC, filename_vocabulary)):
         text_lines = []
         for text_sample in text_samples:
-            sentences = re.split('\n|\s\.', text_sample.lower())
+            sentences = re.split('\n|\s\.\s', text_sample.lower())
             for sentence in sentences:
                 words = sentence.split()
                 if len(words) > 0:
                     words.append('.')
-                    words = list([word.strip() for word in words])
+                    words = list([word.strip().lower() for word in words])
                     text_lines.append(words)
         symbols_count = group_count(text_lines)
         symbols_ordered_by_count = sorted(symbols_count.items(), key=lambda x: x[1], reverse=True)
