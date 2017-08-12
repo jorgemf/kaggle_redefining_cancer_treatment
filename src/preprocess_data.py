@@ -1,5 +1,4 @@
 # coding=utf-8
-from configuration import *
 import zipfile
 import re
 import os
@@ -9,6 +8,7 @@ import urllib2
 from bs4 import BeautifulSoup
 import unicodedata
 import copy
+from src.configuration import *
 
 # increase max csv file in order to load the datasets
 csv.field_size_limit(sys.maxsize)

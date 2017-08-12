@@ -1,7 +1,7 @@
-from configuration import *
 import re
 import os
-from preprocess_data import load_csv_wikipedia_gen, load_csv_dataset, group_count
+from src.configuration import *
+from src.preprocess_data import load_csv_wikipedia_gen, load_csv_dataset, group_count
 
 
 def load_word2vec_data(filename, vocabulary_size=VOCABULARY_SIZE):

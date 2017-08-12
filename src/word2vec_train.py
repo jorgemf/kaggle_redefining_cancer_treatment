@@ -5,10 +5,10 @@ import random
 import csv
 import time
 from datetime import timedelta
-import trainer
 from tensorflow.python.training import training_util
-from word2vec_process_data import load_word2vec_data
-from configuration import *
+from src import trainer
+from src.word2vec_process_data import load_word2vec_data
+from src.configuration import *
 
 
 def generate_training_samples(text_lines, word_frequency_dict, epochs=W2V_EPOCHS,
