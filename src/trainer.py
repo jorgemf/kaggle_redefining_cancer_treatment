@@ -71,10 +71,13 @@ def get_logs_path(path):
     return tensorport.get_logs_path(path)
 
 
-def get_data_path(dataset_name, local_root, local_repo, path=''):
+def get_data_path(dataset_name, local_root, local_repo='', path=''):
     """
     Dataset specification, see: get_data_path,
     https://tensorport.com/documentation/api/#get_data_path
+
+    If local_root starts with gs:// we suppose a bucket in google cloud and return
+    local_root / local_repo / local_path
     :param str name: TensorPort dataset repository name,
         e.g. user_name/repo_name
     :param str local_root: specifies the root directory for dataset.
@@ -86,7 +89,7 @@ def get_data_path(dataset_name, local_root, local_repo, path=''):
     :return str: the real path of the dataset
     """
     if local_root.startswith('gs://'):
-        return local_root
+        return os.path.join(local_root,local_repo, path)
     return tensorport.get_data_path(
         dataset_name=dataset_name,
         local_root=local_root,
