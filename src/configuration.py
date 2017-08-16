@@ -21,6 +21,7 @@ DIR_WIKIPEDIA_GENES = os.path.join(DIR_GENERATED_DATA, 'gen')
 
 VOCABULARY_SIZE = 30000
 EMBEDDINGS_SIZE = 128
+MAX_SEQUENCE_LENGTH = 117000 # this is calculated when the text_classification dataset is created
 
 # word2vec
 
@@ -33,7 +34,6 @@ W2V_NEGATIVE_NUM_SAMPLES = 64  # number of negative examples to sample.
 W2V_LEARNING_RATE_INITIAL = 0.1  # initial learning rate for gradient descent
 W2V_LEARNING_RATE_DECAY = 0.928  # decay of learning rate
 W2V_LEARNING_RATE_DECAY_STEPS = 10000  # steps to decay the learning rate
-W2V_DATA_BUFFER_SIZE = 100000  # size of the buffer to randomize the input data for training
 
 # text classification
 

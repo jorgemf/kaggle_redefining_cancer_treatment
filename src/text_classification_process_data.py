@@ -48,17 +48,11 @@ def balance_class(dataset, final_num=TC_DATA_AUGMENTATION_SAMPLES_PER_CLASS):
         ["{}:{}".format(k, len(classes_group[k])) for k in sorted(classes_group.keys())])
     print("{} different classes: {}".format(len(classes_group), classes_string))
 
-    classes_group_copy = dict(classes_group)
     new_dataset = []
     for key, class_list in classes_group.iteritems():
-        times = final_num / len(classes_group_copy[key])
-        for _ in range(times):
-            for s in classes_group_copy[key]:
-                class_list.append(s.__copy__())
-        random.shuffle(classes_group_copy[key])
-        diff = final_num - len(class_list)
-        for s in classes_group_copy[key][:diff]:
-            class_list.append(s.__copy__())
+        random.shuffle(class_list)
+        for index in range(final_num-len(class_list)):
+            class_list.append(class_list[index].__copy__())
         new_dataset.extend(class_list)
 
     random.shuffle(new_dataset)
@@ -75,7 +69,7 @@ def remove_random_sentences(dataset, ratio_to_remove=TD_DATA_SENTENCE_REMOVE_PER
 
 
 def save_text_classification_dataset(filename, dataset):
-    with(open(os.path.join(DIR_DATA_TEXT_CLASSIFICATION, filename)), 'wb') as file:
+    with open(os.path.join(DIR_DATA_TEXT_CLASSIFICATION, filename), 'wb') as file:
         for data in dataset:
             file.write('{} '.format(data.real_class))
             for sentence in data.text:

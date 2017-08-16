@@ -5,54 +5,13 @@ import random
 import csv
 import time
 from datetime import timedelta
+import shutil
 from tensorflow.python.training import training_util
+from tensorflow.contrib.tensorboard.plugins import projector
 from src import trainer
 from src.word2vec_process_data import load_word2vec_data
 from src.configuration import *
-
-
-def generate_training_samples(text_lines, word_frequency_dict, epochs=W2V_EPOCHS,
-                              window_adjacent_words=W2V_WINDOW_ADJACENT_WORDS,
-                              close_words_size=W2V_CLOSE_WORDS_SIZE,
-                              window_close_words=W2V_WINDOW_CLOSE_WORDS):
-    """
-    Generates training samples from the text lines. For every target word a context is selected,
-    the adjacent words are added to the context and some random words close to the target are also
-    added. The random words are selected by based on their frequency in the text, less frequent
-    words are selected more often in order to balance the dataset. This random selection follows a
-    log distribution, the values are transformed as:
-     p_i = -log(frequence_i) / sum( -log(frequence) )
-    :param List[List[int]] text_lines: text lines with ids instead of words
-    :param word_frequency_dict: dictionary with the frequency of the words
-    :param epochs: number of epochs to generate
-    :param window_adjacent_words: adjacent window to select words for the context
-    :param close_words_size: number of close words to select
-    :param window_close_words: close window to select words for the context
-    :return (str,str): pairs of (label,word)
-    """
-    probabilities_dict = {}
-    for k, v in word_frequency_dict.items():
-        probabilities_dict[k] = -math.log(v)
-    for _ in range(epochs):
-        random.shuffle(text_lines)
-        for text_line in text_lines:
-            probabilities_tl = [probabilities_dict[w] for w in text_line]
-            len_text_line = len(text_line)
-            for i, word in enumerate(text_line):
-                aw_min = max(0, i - window_adjacent_words)
-                aw_max = min(len_text_line, i + window_adjacent_words + 1)
-                adjacent_words = text_line[aw_min:i] + text_line[i + 1:aw_max]
-
-                nsw_min = max(0, min(aw_min, i - window_close_words))
-                nsw_max = min(len_text_line, max(aw_max, i + window_close_words + 1))
-                close_words = text_line[nsw_min:aw_min] + text_line[aw_max:nsw_max]
-
-                prob = probabilities_tl[nsw_min:aw_min] + probabilities_tl[aw_max:nsw_max]
-                close_words_selected = select_random_labels(close_words, close_words_size, prob)
-
-                context = adjacent_words + close_words_selected
-                for label in context:
-                    yield label, word
+from dataset import Dataset
 
 
 def select_random_labels(labels, num_labels, probabilities):
@@ -82,49 +41,104 @@ def select_random_labels(labels, num_labels, probabilities):
     return samples
 
 
-def data_generator_buffered(data_generator, buffer_size=100000, randomize=True):
+class DatasetWord2Vec(Dataset):
     """
-    Creates a buffer of samples generated and returns random elements of this buffer if
-    randomize is true.
-    :param data_generator: generator of samples
-    :param buffer_size: size of the buffer of generated samples
-    :param randomize: whether to return a random sample of the buffer or the oldest one
-    :return: a sample from the buffer of samples
+    This is a custom implementation of the dataset. As we generate more than one sample per line
+    in the text file we cannot use the dataset_filelines. We also do not use more than one thread
+    to read the data. And the data is shuffled in the batch join operation
     """
-    buffer = []
-    try:
-        while len(buffer) < buffer_size:
-            buffer.append(data_generator.next())
-    except StopIteration:
-        pass
-    while len(buffer) > 1:
-        if randomize:
-            random_pos = random.randrange(len(buffer))
+    def __init__(self, vocabulary_size=VOCABULARY_SIZE,
+                 window_adjacent_words=W2V_WINDOW_ADJACENT_WORDS,
+                 close_words_size=W2V_CLOSE_WORDS_SIZE,
+                 window_close_words=W2V_WINDOW_CLOSE_WORDS):
+        self._size = None
+        self.window_adjacent_words = window_adjacent_words
+        self.close_words_size = close_words_size
+        self.window_close_words = window_close_words
+        filename = 'word2vec_dataset_{}'.format(vocabulary_size)
+        self.data_file = os.path.join(DIR_DATA_WORD2VEC, filename)
+
+        _, _, word_frequency_dict = load_word2vec_data('word2vec_dataset',
+                                                       vocabulary_size=vocabulary_size)
+        self.probabilities_dict = {}
+        unknown_count = 0
+        for k, v in word_frequency_dict.items():
+            if k != 0:
+                self.probabilities_dict[k] = -math.log(v)
+            else:
+                unknown_count += v
+        self.probabilities_dict[0] = -math.log(unknown_count)
+
+        self.samples_generator = self._samples_generator()
+
+    def _count_num_records(self):
+        size = 0
+        with open(self.data_file) as f:
+            for line in f:
+                words = line.split()
+                len_text_line = len(words)
+                for i, word in enumerate(words):
+                    aw_min = max(0, i - self.window_adjacent_words)
+                    aw_max = min(len_text_line, i + self.window_adjacent_words + 1)
+                    adjacent_words = (i - aw_min) + (aw_max - (i + 1))
+                    nsw_min = max(0, min(aw_min, i - self.window_close_words))
+                    nsw_max = min(len_text_line, max(aw_max, i + self.window_close_words + 1))
+                    close_words = (aw_min - nsw_min) + (nsw_max - aw_max)
+                    total_pairs = adjacent_words + min(close_words, self.close_words_size)
+                    size += total_pairs
+        return size
+
+    def get_size(self):
+        if self._size is None:
+            self._size = self._count_num_records()
+        return self._size
+
+    def _samples_generator(self):
+        while True:
+            with open(self.data_file) as f:
+                for l in f:
+                    text_line = [int(w) for w in l.split()]
+                    probabilities_tl = [self.probabilities_dict[w] for w in text_line]
+                    len_text_line = len(text_line)
+                    for i, word in enumerate(text_line):
+                        aw_min = max(0, i - self.window_adjacent_words)
+                        aw_max = min(len_text_line, i + self.window_adjacent_words + 1)
+                        adjacent_words = text_line[aw_min:i] + text_line[i + 1:aw_max]
+
+                        nsw_min = max(0, min(aw_min, i - self.window_close_words))
+                        nsw_max = min(len_text_line, max(aw_max, i + self.window_close_words + 1))
+                        close_words = text_line[nsw_min:aw_min] + text_line[aw_max:nsw_max]
+
+                        prob = probabilities_tl[nsw_min:aw_min] + probabilities_tl[aw_max:nsw_max]
+                        close_words_selected = select_random_labels(close_words,
+                                                                    self.close_words_size, prob)
+
+                        context = adjacent_words + close_words_selected
+                        for label in context:
+                            yield np.int32(label), np.int32(word)
+
+    def py_func_parse_example(self):
+        return self.samples_generator.next()
+
+    def read(self, batch_size, shuffle=False):
+        inputs_outputs = []
+
+        with tf.device('/cpu'):
+            inputs, outputs = tf.py_func(self.py_func_parse_example, [], [tf.int32, tf.int32],
+                                         stateful=True, name='parse_example')
+        inputs = tf.reshape(inputs, [1])
+        outputs = tf.reshape(outputs, [1])
+        inputs_outputs.append([inputs, outputs])
+
+        if shuffle:
+            capacity = 100 * batch_size
+            result = tf.train.shuffle_batch_join(inputs_outputs, batch_size=batch_size,
+                                                 min_after_dequeue=capacity / 2, capacity=capacity)
         else:
-            random_pos = 0
-        yield buffer[random_pos]
-        del buffer[random_pos]
-        try:
-            buffer.append(data_generator.next())
-        except StopIteration:
-            pass
-    yield buffer[0]
+            capacity = 10 * batch_size
+            result = tf.train.batch_join(inputs_outputs, batch_size=batch_size, capacity=capacity)
 
-
-def generate_batch(data_generator, batch_size):
-    """
-    Generates batchs of samples given a generator that only generates one sample per iteration
-    :param data_generator: generator of samples
-    :param batch_size: batch size of the data generated
-    :return: a batch list of samples
-    """
-    batch = []
-    for sample in data_generator:
-        batch.append(sample)
-        if len(batch) == batch_size:
-            inputs, outputs = zip(*batch)
-            yield np.asarray(inputs), np.asarray(outputs)
-            batch = []
+        return result[0], result[1]
 
 
 class MyTrainer(trainer.Trainer):
@@ -133,10 +147,13 @@ class MyTrainer(trainer.Trainer):
     more details.
     """
 
-    def __init__(self):
+    def __init__(self, dataset, epochs=W2V_EPOCHS):
+        self.dataset = dataset
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        super(MyTrainer, self).__init__(DIR_W2V_LOGDIR, monitored_training_session_config=config)
+        max_steps = epochs * dataset.get_size()
+        super(MyTrainer, self).__init__(DIR_W2V_LOGDIR, max_steps=max_steps,
+                                        monitored_training_session_config=config)
 
     def model(self,
               batch_size=W2V_BATCH_SIZE,
@@ -148,9 +165,8 @@ class MyTrainer(trainer.Trainer):
               learning_rate_decay_steps=W2V_LEARNING_RATE_DECAY_STEPS):
         self.global_step = training_util.get_or_create_global_step()
 
-        # inputs
-        self.input_label = tf.placeholder(tf.int32, shape=[batch_size], name='input_label')
-        self.output_word = tf.placeholder(tf.int32, shape=[batch_size], name='output_word')
+        # inputs/outputs
+        self.input_label, self.output_word = self.dataset.read(batch_size, shuffle=True)
         input_label_reshaped = tf.reshape(self.input_label, [batch_size])
         output_word_reshaped = tf.reshape(self.output_word, [batch_size, 1])
 
@@ -190,34 +206,39 @@ class MyTrainer(trainer.Trainer):
         # check a nan value in the loss
         self.loss = tf.check_numerics(self.loss, 'loss is nan')
 
+        # embeddings
+        config = projector.ProjectorConfig()
+        embedding = config.embeddings.add()
+        embedding.tensor_name = self.embeddings.name
+        filename_tsv = '{}_{}.tsv'.format('word2vec_dataset', vocabulary_size)
+        shutil.copy(os.path.join(DIR_DATA_WORD2VEC, filename_tsv), self.log_dir)
+        embedding.metadata_path = filename_tsv
+        summary_writer = tf.summary.FileWriter(self.log_dir)
+        projector.visualize_embeddings(summary_writer, config)
+
+        # in case you want to get the embeddings from the graph:
+        # norm = tf.sqrt(tf.reduce_sum(tf.square(self.embeddings), 1, keep_dims=True))
+        # self.normalized_embeddings = self.embeddings / norm
+
         return None
 
     def create_graph(self):
         return self.model()
 
     def train_step(self, session, graph_data):
-        try:
-            for words, labels in generate_batch(data_generator, W2V_BATCH_SIZE):
-                lr, _, _, loss_val, step = session.run([self.learning_rate, self.training_op,
-                                                        self.loss, self.average_loss,
-                                                        self.global_step],
-                                                       feed_dict={
-                                                           self.input_label: labels,
-                                                           self.output_word: words,
-                                                       })
-                if step % 100000 == 0:
-                    elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
-                    m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
-                    print(m.format(step, loss_val, lr, elapsed_time))
-        except StopIteration:
-            pass
+        lr, _, _, loss_val, step = session.run([self.learning_rate, self.training_op, self.loss,
+                                                self.average_loss, self.global_step])
+        if step % 1000 == 0:
+            elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
+            m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
+            print(m.format(step, loss_val, lr, elapsed_time))
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()
 
     def end(self, session):
         print('Saving embeddings in text format...')
-        embeddings_eval = self.embeddings.eval()
+        embeddings_eval = self.embeddings.eval(session=session)
         norm = np.sqrt(np.sum(np.square(embeddings_eval)))
         normalized_embeddings = embeddings_eval / norm
         embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
@@ -227,13 +248,5 @@ class MyTrainer(trainer.Trainer):
 
 
 if __name__ == '__main__':
-    print('Loading dataset...')
-    symbols_dict, encoded_text, word_frequency_dict = load_word2vec_data('word2vec_dataset')
-    vocabulary_size = len(set(symbols_dict.values()))
-
-    print('Buffering data...')
-    data_generator = generate_training_samples(encoded_text, word_frequency_dict)
-    data_generator = data_generator_buffered(data_generator)
-
     # start the training
-    MyTrainer().train()
+    MyTrainer(dataset=DatasetWord2Vec()).train()

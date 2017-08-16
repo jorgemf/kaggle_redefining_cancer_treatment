@@ -160,8 +160,8 @@ class Trainer(session_run_hook.SessionRunHook):
             hooks.append(self)
             if self.max_time and self.max_time > 0:
                 hooks.append(StopAtTimeHook(self.max_time))
-            if (self.max_steps or self.num_steps) and (self.max_steps > 0 and self.num_steps > 0):
-                StopAtStepHook(num_steps=self.num_steps, last_step=self.max_steps)
+            if (self.max_steps or self.num_steps) and (self.max_steps > 0 or self.num_steps > 0):
+                hooks.append(StopAtStepHook(num_steps=self.num_steps, last_step=self.max_steps))
 
             logging.info('Creating MonitoredTrainingSession...')
             with tf.train.MonitoredTrainingSession(

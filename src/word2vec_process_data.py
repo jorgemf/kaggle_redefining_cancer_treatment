@@ -65,6 +65,7 @@ def load_or_create_dataset_word2vec(filename, text_samples, vocabulary_size=VOCA
     filename_vocabulary = '{}_{}'.format(filename, vocabulary_size)
     filename_dict = '{}_dict'.format(filename_vocabulary)
     filename_count = '{}_count'.format(filename_vocabulary)
+    filename_tsv = '{}.tsv'.format(filename_vocabulary)
     if not os.path.exists(os.path.join(DIR_DATA_WORD2VEC, filename_vocabulary)):
         text_lines = []
         for text_sample in text_samples:
@@ -113,6 +114,13 @@ def load_or_create_dataset_word2vec(filename, text_samples, vocabulary_size=VOCA
         with open(os.path.join(DIR_DATA_WORD2VEC, filename_count), 'wb') as f:
             for symbol, count in symbols_ordered_by_count:
                 f.write('{} = {}\n'.format(symbol, count))
+        with open(os.path.join(DIR_DATA_WORD2VEC, filename_tsv), 'wb') as f:
+            f.write('word\tcount\tid\n')
+            f.write('_UNKOWN_\t{}\t0\n'.format(len(unknown_symbols)))
+            pos = 1
+            for symbol, count in known_symbols:
+                f.write('{}\t{}\t{}\n'.format(symbol, count, pos))
+                pos += 1
 
     return load_word2vec_data(filename)
 

@@ -480,6 +480,8 @@ if __name__ == '__main__':
         os.makedirs(DIR_GENERATED_DATA)
     if not os.path.exists(DIR_DATA_WORD2VEC):
         os.makedirs(DIR_DATA_WORD2VEC)
+    if not os.path.exists(DIR_DATA_TEXT_CLASSIFICATION):
+        os.makedirs(DIR_DATA_TEXT_CLASSIFICATION)
     if not os.path.exists(DIR_WIKIPEDIA_GENES):
         os.makedirs(DIR_WIKIPEDIA_GENES)
     print('Extract zip files if not already done...')
