@@ -91,7 +91,7 @@ if __name__ == '__main__':
     print('Saving final training dataset...')
     save_text_classification_dataset('train_set', train_set)
     print('Generating samples for test set...')
-    test_set = load_csv_dataset('train_set_numbers_parsed')
+    test_set = load_csv_dataset('test_set_numbers_parsed')
     transform_words_in_ids(test_set, word_dict)
     save_text_classification_dataset('test_set', test_set)
     print('Calculating longest test...')
