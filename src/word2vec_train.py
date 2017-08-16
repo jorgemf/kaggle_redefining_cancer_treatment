@@ -11,7 +11,6 @@ from tensorflow.contrib.tensorboard.plugins import projector
 from src import trainer
 from src.word2vec_process_data import load_word2vec_data
 from src.configuration import *
-from dataset import Dataset
 
 
 def select_random_labels(labels, num_labels, probabilities):
@@ -41,16 +40,62 @@ def select_random_labels(labels, num_labels, probabilities):
     return samples
 
 
-class DatasetWord2Vec(Dataset):
+def data_generator_buffered(data_generator, buffer_size=100000, randomize=True):
     """
-    This is a custom implementation of the dataset. As we generate more than one sample per line
-    in the text file we cannot use the dataset_filelines. We also do not use more than one thread
-    to read the data. And the data is shuffled in the batch join operation
+    Creates a buffer of samples generated and returns random elements of this buffer if
+    randomize is true.
+    :param data_generator: generator of samples
+    :param buffer_size: size of the buffer of generated samples
+    :param randomize: whether to return a random sample of the buffer or the oldest one
+    :return: a sample from the buffer of samples
     """
+    buffer = []
+    try:
+        while len(buffer) < buffer_size:
+            buffer.append(data_generator.next())
+    except StopIteration:
+        pass
+    while len(buffer) > 1:
+        if randomize:
+            random_pos = random.randrange(len(buffer))
+        else:
+            random_pos = 0
+        yield buffer[random_pos]
+        del buffer[random_pos]
+        try:
+            buffer.append(data_generator.next())
+        except StopIteration:
+            pass
+    yield buffer[0]
+
+
+def generate_batch(data_generator, batch_size):
+    """
+    Generates batchs of samples given a generator that only generates one sample per iteration
+    :param data_generator: generator of samples
+    :param batch_size: batch size of the data generated
+    :return: a batch list of samples
+    """
+    batch = []
+    for sample in data_generator:
+        batch.append(sample)
+        if len(batch) == batch_size:
+            inputs, outputs = zip(*batch)
+            yield np.asarray(inputs), np.asarray(outputs)
+            batch = []
+
+
+class Word2VecDataset(object):
+    """
+    Custom dataset. We use it to feed the session.run method directly.
+    """
+
     def __init__(self, vocabulary_size=VOCABULARY_SIZE,
                  window_adjacent_words=W2V_WINDOW_ADJACENT_WORDS,
                  close_words_size=W2V_CLOSE_WORDS_SIZE,
-                 window_close_words=W2V_WINDOW_CLOSE_WORDS):
+                 window_close_words=W2V_WINDOW_CLOSE_WORDS,
+                 shuffle_data=True,
+                 batch_size=W2V_BATCH_SIZE):
         self._size = None
         self.window_adjacent_words = window_adjacent_words
         self.close_words_size = close_words_size
@@ -69,7 +114,9 @@ class DatasetWord2Vec(Dataset):
                 unknown_count += v
         self.probabilities_dict[0] = -math.log(unknown_count)
 
-        self.samples_generator = self._samples_generator()
+        samples_generator = self._samples_generator()
+        samples_generator = data_generator_buffered(samples_generator, randomize=shuffle_data)
+        self.batch_generator = generate_batch(samples_generator, batch_size)
 
     def _count_num_records(self):
         size = 0
@@ -117,31 +164,11 @@ class DatasetWord2Vec(Dataset):
                         for label in context:
                             yield np.int32(label), np.int32(word)
 
-    def py_func_parse_example(self):
-        return self.samples_generator.next()
-
-    def read(self, batch_size, shuffle=False):
-        inputs_outputs = []
-
-        with tf.device('/cpu'):
-            inputs, outputs = tf.py_func(self.py_func_parse_example, [], [tf.int32, tf.int32],
-                                         stateful=True, name='parse_example')
-        inputs = tf.reshape(inputs, [1])
-        outputs = tf.reshape(outputs, [1])
-        inputs_outputs.append([inputs, outputs])
-
-        if shuffle:
-            capacity = 100 * batch_size
-            result = tf.train.shuffle_batch_join(inputs_outputs, batch_size=batch_size,
-                                                 min_after_dequeue=capacity / 2, capacity=capacity)
-        else:
-            capacity = 10 * batch_size
-            result = tf.train.batch_join(inputs_outputs, batch_size=batch_size, capacity=capacity)
-
-        return result[0], result[1]
+    def read(self):
+        return self.batch_generator.next()
 
 
-class MyTrainer(trainer.Trainer):
+class Word2VecTrainer(trainer.Trainer):
     """
     Helper class to run the training and create the model for the training. See trainer.Trainer for
     more details.
@@ -152,8 +179,8 @@ class MyTrainer(trainer.Trainer):
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         max_steps = epochs * dataset.get_size()
-        super(MyTrainer, self).__init__(DIR_W2V_LOGDIR, max_steps=max_steps,
-                                        monitored_training_session_config=config)
+        super(Word2VecTrainer, self).__init__(DIR_W2V_LOGDIR, max_steps=max_steps,
+                                              monitored_training_session_config=config)
 
     def model(self,
               batch_size=W2V_BATCH_SIZE,
@@ -166,7 +193,8 @@ class MyTrainer(trainer.Trainer):
         self.global_step = training_util.get_or_create_global_step()
 
         # inputs/outputs
-        self.input_label, self.output_word = self.dataset.read(batch_size, shuffle=True)
+        self.input_label = tf.placeholder(tf.int32, shape=[batch_size], name='input_label')
+        self.output_word = tf.placeholder(tf.int32, shape=[batch_size], name='output_word')
         input_label_reshaped = tf.reshape(self.input_label, [batch_size])
         output_word_reshaped = tf.reshape(self.output_word, [batch_size, 1])
 
@@ -211,6 +239,8 @@ class MyTrainer(trainer.Trainer):
         embedding = config.embeddings.add()
         embedding.tensor_name = self.embeddings.name
         filename_tsv = '{}_{}.tsv'.format('word2vec_dataset', vocabulary_size)
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
         shutil.copy(os.path.join(DIR_DATA_WORD2VEC, filename_tsv), self.log_dir)
         embedding.metadata_path = filename_tsv
         summary_writer = tf.summary.FileWriter(self.log_dir)
@@ -226,17 +256,43 @@ class MyTrainer(trainer.Trainer):
         return self.model()
 
     def train_step(self, session, graph_data):
+        labels, words = self.dataset.read()
         lr, _, _, loss_val, step = session.run([self.learning_rate, self.training_op, self.loss,
-                                                self.average_loss, self.global_step])
-        if step % 1000 == 0:
-            elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
-            m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
-            print(m.format(step, loss_val, lr, elapsed_time))
+                                                self.average_loss, self.global_step],
+                                               feed_dict={
+                                                   self.input_label: labels,
+                                                   self.output_word: words,
+                                               })
+        if self.is_chief:
+            if step % 1000 == 0:
+                elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
+                m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
+                print(m.format(step, loss_val, lr, elapsed_time))
+            if step % 100 == 0:
+                current_time = time.time()
+                embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
+                embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
+                embeddings_file_timestamp = os.path.getmtime(embeddings_filepath)
+                if current_time - embeddings_file_timestamp > 15 * 60:
+                    self.save_embeddings(session)
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()
 
+    def create_hooks(self, graph_data):
+        """
+        Creates the hooks for the session. This function is called after the graph is created and
+        before the session is created.
+        :param graph_data: the graph data returned create_graph
+        :return: A tuple with two lists of hooks or none. First list if the hooks for all nodes and
+        the second list are the hooks only for the master node.
+        """
+        return [], []
+
     def end(self, session):
+        self.save_embeddings(session)
+
+    def save_embeddings(self, session):
         print('Saving embeddings in text format...')
         embeddings_eval = self.embeddings.eval(session=session)
         norm = np.sqrt(np.sum(np.square(embeddings_eval)))
@@ -245,8 +301,10 @@ class MyTrainer(trainer.Trainer):
         with open(os.path.join(DIR_DATA_WORD2VEC, embeddings_file), 'wb') as file:
             writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             writer.writerows(normalized_embeddings)
+        # copy the embeddings file to the log dir so we can download it from tensorport
+        shutil.copy(os.path.join(DIR_DATA_WORD2VEC, embeddings_file), self.log_dir)
 
 
 if __name__ == '__main__':
     # start the training
-    MyTrainer(dataset=DatasetWord2Vec()).train()
+    Word2VecTrainer(dataset=Word2VecDataset()).train()

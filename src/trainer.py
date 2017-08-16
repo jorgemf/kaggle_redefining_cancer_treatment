@@ -89,7 +89,7 @@ def get_data_path(dataset_name, local_root, local_repo='', path=''):
     :return str: the real path of the dataset
     """
     if local_root.startswith('gs://'):
-        return os.path.join(local_root,local_repo, path)
+        return os.path.join(local_root, local_repo, path)
     return tensorport.get_data_path(
         dataset_name=dataset_name,
         local_root=local_root,
@@ -101,7 +101,7 @@ def get_data_path(dataset_name, local_root, local_repo='', path=''):
 class Trainer(session_run_hook.SessionRunHook):
     """
     Default class for training. This class extends from SessionRunHook and it is added to the hooks
-    in the MonitoredTrainingSession
+    in the MonitoredTrainingSession as one of the chief_only_hooks
     """
 
     def __init__(self, log_dir, max_time=None, num_steps=None, max_steps=None,
@@ -157,16 +157,19 @@ class Trainer(session_run_hook.SessionRunHook):
             hooks, chief_only_hooks = self.create_hooks(graph_data)
             if hooks is None:
                 hooks = []
-            hooks.append(self)
+            if chief_only_hooks is None:
+                chief_only_hooks = []
+            chief_only_hooks.append(self)
             if self.max_time and self.max_time > 0:
                 hooks.append(StopAtTimeHook(self.max_time))
             if (self.max_steps or self.num_steps) and (self.max_steps > 0 or self.num_steps > 0):
                 hooks.append(StopAtStepHook(num_steps=self.num_steps, last_step=self.max_steps))
 
             logging.info('Creating MonitoredTrainingSession...')
+            self.is_chief = task_spec.index == 0
             with tf.train.MonitoredTrainingSession(
                     master=target,
-                    is_chief=(task_spec.index == 0),
+                    is_chief=self.is_chief,
                     checkpoint_dir=self.log_dir,
                     save_checkpoint_secs=self.save_checkpoint_secs,
                     save_summaries_steps=self.save_summaries_steps,
