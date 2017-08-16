@@ -264,11 +264,11 @@ class Word2VecTrainer(trainer.Trainer):
                                                    self.output_word: words,
                                                })
         if self.is_chief:
-            if step % 1000 == 0:
+            if step % 10000 == 0:
                 elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
                 m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
                 print(m.format(step, loss_val, lr, elapsed_time))
-            if step % 100 == 0:
+            if step % 1000 == 0:
                 current_time = time.time()
                 embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
                 embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
@@ -278,16 +278,6 @@ class Word2VecTrainer(trainer.Trainer):
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()
-
-    def create_hooks(self, graph_data):
-        """
-        Creates the hooks for the session. This function is called after the graph is created and
-        before the session is created.
-        :param graph_data: the graph data returned create_graph
-        :return: A tuple with two lists of hooks or none. First list if the hooks for all nodes and
-        the second list are the hooks only for the master node.
-        """
-        return [], []
 
     def end(self, session):
         self.save_embeddings(session)
