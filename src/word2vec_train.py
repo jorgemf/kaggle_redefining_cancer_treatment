@@ -272,9 +272,12 @@ class Word2VecTrainer(trainer.Trainer):
                 current_time = time.time()
                 embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
                 embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
-                embeddings_file_timestamp = os.path.getmtime(embeddings_filepath)
-                if current_time - embeddings_file_timestamp > 15 * 60:
+                if not os.path.exists(embeddings_file):
                     self.save_embeddings(session)
+                else:
+                    embeddings_file_timestamp = os.path.getmtime(embeddings_filepath)
+                    if current_time - embeddings_file_timestamp > 15 * 60:
+                        self.save_embeddings(session)
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()
