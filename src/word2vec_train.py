@@ -213,12 +213,14 @@ class Word2VecTrainer(trainer.Trainer):
                                   inputs=embed, num_sampled=num_negative_samples,
                                   num_classes=vocabulary_size)
         self.loss = tf.reduce_mean(nce_loss)
+        tf.summary.scalar('loss', self.loss)
 
         # learning rate & optimizer
         self.learning_rate = tf.train.exponential_decay(learning_rate_initial, self.global_step,
                                                         learning_rate_decay_steps,
                                                         learning_rate_decay,
                                                         staircase=True, name='learning_rate')
+        tf.summary.scalar('learning_rate', self.learning_rate)
         sgd = tf.train.GradientDescentOptimizer(self.learning_rate)
         self.optimizer = sgd.minimize(self.loss, global_step=self.global_step)
 
@@ -228,7 +230,6 @@ class Word2VecTrainer(trainer.Trainer):
         with tf.control_dependencies([self.optimizer]):
             self.training_op = tf.group(ema_assign)
         self.average_loss = ema.average(self.loss)
-        tf.summary.scalar('loss', self.loss)
         # saver to save the model
         self.saver = tf.train.Saver()
         # check a nan value in the loss
