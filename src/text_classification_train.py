@@ -36,14 +36,14 @@ class TextClassificationDataset(DatasetFilelines):
         example_serialized = example_serialized.split()
         data_sample_class = -1
         try:
-            data_sample_class = int(example_serialized[0])
+            data_sample_class = int(example_serialized[0]) - 1  # first class is 1, last one is 9
         except:
             pass
         sequence = [np.int32(w) for w in example_serialized[1:]]
         if len(sequence) > MAX_SEQUENCE_LENGTH:
             sequence = sequence[:MAX_SEQUENCE_LENGTH]
         # add padding
-        while (len(sequence) < MAX_SEQUENCE_LENGTH):
+        while len(sequence) < MAX_SEQUENCE_LENGTH:
             sequence.append(-1)
         return [
             np.asarray(sequence, dtype=np.int32),
@@ -107,15 +107,28 @@ class TextClassificationTrainer(trainer.Trainer):
         targets = text_classification_model.targets(self.expected_labels, output_classes)
         self.loss = text_classification_model.loss(targets, outputs)
         tf.summary.scalar('loss', self.loss)
+        # measure other errors
+        targets = tf.squeeze(targets)
+        mse_mean = tf.losses.mean_squared_error(targets, outputs['prediction_mean'],
+                                                loss_collection=None)
+        mse_percent = tf.losses.mean_squared_error(targets, outputs['prediction_percent'],
+                                                   loss_collection=None)
+        tf.summary.scalar('mse_prediction_mean', mse_mean)
+        tf.summary.scalar('mse_prediction_percent', mse_percent)
 
-        # learning rate & optimizer
+        # learning rate
         self.learning_rate = tf.train.exponential_decay(learning_rate_initial, self.global_step,
                                                         learning_rate_decay_steps,
                                                         learning_rate_decay,
                                                         staircase=True, name='learning_rate')
         tf.summary.scalar('learning_rate', self.learning_rate)
-        sgd = tf.train.GradientDescentOptimizer(self.learning_rate)
-        self.optimizer = sgd.minimize(self.loss, global_step=self.global_step)
+
+        # optimizer and gradient clipping
+        optimizer = tf.train.AdamOptimizer(self.learning_rate)
+        gradients, variables = zip(*optimizer.compute_gradients(self.loss))
+        gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
+        self.optimizer = optimizer.apply_gradients(zip(gradients, variables),
+                                                   global_step=self.global_step)
 
         # summaries and moving average
         ema = tf.train.ExponentialMovingAverage(0.9)

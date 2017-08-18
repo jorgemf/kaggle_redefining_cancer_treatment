@@ -47,16 +47,33 @@ def model(input_text, num_output_classes, embeddings, num_hidden=TC_MODEL_HIDDEN
     bias = tf.constant(0.1, shape=[num_output_classes])
     logits = tf.matmul(output, weight) + bias
     prediction = tf.nn.softmax(logits)
-    dim2 = int(input_text.get_shape()[1])
-    logits = tf.reshape(logits, [-1, dim2, num_output_classes])
-    prediction = tf.reshape(prediction, [-1, dim2, num_output_classes])
-    # prediction_mask = tf.boolean_mask(prediction, mask)
-    # prediction_sum = tf.reduce_sum(prediction_mask, reduction_indices=0)
-    # prediction_mean = prediction_sum / tf.cast(sequence_length, tf.float32)
+    dim_sequence_length = int(input_text.get_shape()[1])
+    logits = tf.reshape(logits, [-1, dim_sequence_length, num_output_classes])
+    prediction = tf.reshape(prediction, [-1, dim_sequence_length, num_output_classes])
+
+    # calculate final prediction based on the average of the predictions in each step
+    reshaped_mask = tf.reshape(tf.cast(mask, dtype=tf.float32), [-1, dim_sequence_length, 1])
+    prediction_mask = prediction * reshaped_mask
+    prediction_sum = tf.reduce_sum(prediction_mask, reduction_indices=1)
+    reshaped_length = tf.reshape(tf.cast(sequence_length, tf.float32), [-1, 1])
+    prediction_mean = prediction_sum / reshaped_length
+    prediction_mean_sum = tf.reduce_sum(prediction_mean, reduction_indices=1)
+    prediction_mean_sum = tf.reshape(prediction_mean_sum, [-1, 1])
+    prediction_mean = prediction_mean / prediction_mean_sum
+
+    prediction_classes = tf.argmax(prediction, dimension=2)
+    prediction_classes_one_hot = tf.one_hot(prediction_classes, axis=-1, depth=num_output_classes,
+                                            on_value=1, off_value=0)
+    prediction_classes_one_hot *= tf.reshape(tf.cast(mask, dtype=tf.int32),
+                                             [-1, dim_sequence_length, 1])
+    prediction_classes_one_hot_sum = tf.reduce_sum(prediction_classes_one_hot, reduction_indices=1)
+    prediction_percent = tf.cast(prediction_classes_one_hot_sum, tf.float32) / reshaped_length
+
     return {
         'logits': logits,
         'prediction': prediction,
-        # 'prediction_mean': prediction_mean,
+        'prediction_mean': prediction_mean,
+        'prediction_percent': prediction_percent,
         'mask': mask,
         'sequence_length': sequence_length,
     }
@@ -85,7 +102,7 @@ def loss(targets, graph_data):
     sequence_length = graph_data['sequence_length']
     # Compute cross entropy for each frame.
     cross_entropy = targets * tf.log(logits)
-    cross_entropy = -tf.reduce_sum(cross_entropy, reduction_indices=2)
+    cross_entropy = - tf.reduce_sum(cross_entropy, reduction_indices=2)
     cross_entropy *= tf.cast(mask, dtype=tf.float32)
     # Average over actual sequence lengths.
     cross_entropy = tf.reduce_sum(cross_entropy, reduction_indices=1)

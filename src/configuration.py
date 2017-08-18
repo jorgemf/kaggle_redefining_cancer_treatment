@@ -21,7 +21,7 @@ DIR_WIKIPEDIA_GENES = os.path.join(DIR_GENERATED_DATA, 'gen')
 
 VOCABULARY_SIZE = 30000
 EMBEDDINGS_SIZE = 128
-MAX_SEQUENCE_LENGTH = 117000 # this is calculated when the text_classification dataset is created
+MAX_SEQUENCE_LENGTH = 117000  # this is calculated when the text_classification dataset is created
 
 # word2vec
 
@@ -44,6 +44,6 @@ TC_BATCH_SIZE = 4  # batch size for the training
 TC_MODEL_HIDDEN = 200  # hidden GRUCells for the model
 TC_MODEL_LAYERS = 3  # number of layers of the model
 TC_MODEL_DROPOUT = 0.8  # dropout during training in the model
-TC_LEARNING_RATE_INITIAL = 0.01  # initial learning rate for gradient descent
+TC_LEARNING_RATE_INITIAL = 0.001  # initial learning rate for gradient descent
 TC_LEARNING_RATE_DECAY = 0.9  # decay of learning rate
 TC_LEARNING_RATE_DECAY_STEPS = 1000  # steps to decay the learning rate
