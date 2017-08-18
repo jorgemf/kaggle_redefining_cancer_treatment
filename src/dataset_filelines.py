@@ -1,7 +1,5 @@
-import logging
-import os.path as path
-
 import tensorflow as tf
+from tensorflow.python.platform import gfile
 from dataset import Dataset
 
 
@@ -30,7 +28,7 @@ class DatasetFilelines(Dataset):
         """
         size = 0
         for data_file in self.data_files:
-            with open(data_file) as f:
+            with gfile.FastGFile(data_file, 'r') as f:
                 for line in f:
                     if len(line.strip()) > 0:
                         size += 1
@@ -55,12 +53,12 @@ class DatasetFilelines(Dataset):
         for t in output_types:
             if t not in [tf.int8, tf.int16, tf.int32, tf.int64, tf.float16, tf.float32, tf.float64,
                          tf.string, tf.bool, tf.uint8, tf.uint16, tf.complex64, tf.complex128,
-                         tf.qint8, tf.qint16, tf.qint32,tf.quint8, tf.quint16]:
+                         tf.qint8, tf.qint16, tf.qint32, tf.quint8, tf.quint16]:
                 raise ValueError('type "{}" not recognized as a valid tf type'.format(t))
 
         with tf.device('/cpu'):
             parsed_example = tf.py_func(self.py_func_parse_example, [example_serialized],
-                                    output_types, stateful=True, name='parse_example')
+                                        output_types, stateful=True, name='parse_example')
         if inputs_num > 0:
             inputs = parsed_example[:inputs_num]
         else:
