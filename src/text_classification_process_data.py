@@ -5,6 +5,13 @@ from preprocess_data import load_csv_dataset
 
 
 def load_word2vec_dict(filename, vocabulary_size=VOCABULARY_SIZE):
+    """
+    Loads the word2vec dictionary
+    :param str filename: name of the file with the dict
+    :param int vocabulary_size: size of the vocabulary
+    :return Dict[str, int]: Dictionary where the key is the word and teh value is the encoded value
+    for the word as an integer.
+    """
     filename = '{}_{}'.format(filename, vocabulary_size)
     filename_dict = '{}_dict'.format(filename)
     with open(os.path.join(DIR_DATA_WORD2VEC, filename_dict), 'r') as f:
@@ -18,6 +25,12 @@ def load_word2vec_dict(filename, vocabulary_size=VOCABULARY_SIZE):
 
 
 def transform_words_in_ids(dataset, symbols_dict):
+    """
+    Uses a dictionary of symbols to translate the string words into encoded integers for the text
+    in the dataset
+    :param List[DataSample] dataset: dataset of DataSample
+    :param Dict[str, int] symbols_dict: dictionary with the encoded values of the words
+    """
     for datasample in dataset:
         sentences = datasample.text.split(' . ')
         parsed_sentences = []
@@ -39,6 +52,13 @@ def transform_words_in_ids(dataset, symbols_dict):
 
 
 def balance_class(dataset, final_num=TC_DATA_AUGMENTATION_SAMPLES_PER_CLASS):
+    """
+    Balance the classes to a target value of number of elements per class. This method only
+    replicates the samples in the class until if matchs the final_num
+    :param List[DataSample] dataset: dataset of DataSample
+    :param final_num: target number of elements per class
+    :return List[DataSample]: the new dataset with the repeated samples. It is also shuffled
+    """
     classes_group = {}
     for d in dataset:
         if d.real_class not in classes_group:
@@ -51,7 +71,7 @@ def balance_class(dataset, final_num=TC_DATA_AUGMENTATION_SAMPLES_PER_CLASS):
     new_dataset = []
     for key, class_list in classes_group.iteritems():
         random.shuffle(class_list)
-        for index in range(final_num-len(class_list)):
+        for index in range(final_num - len(class_list)):
             class_list.append(class_list[index].__copy__())
         new_dataset.extend(class_list)
 
@@ -60,6 +80,13 @@ def balance_class(dataset, final_num=TC_DATA_AUGMENTATION_SAMPLES_PER_CLASS):
 
 
 def remove_random_sentences(dataset, ratio_to_remove=TD_DATA_SENTENCE_REMOVE_PERCENTAGE):
+    """
+    Removes random sentences of the text in the dataset. This method along with balance_class are a
+    way to augmentate the dataset.
+    :param List[DataSample] dataset: dataset of DataSample
+    :param float ratio_to_remove: ratio of sentences to be removed from each sample in the dataset
+    :return List[DataSample]: the dataset with the removed sentences
+    """
     for sample in dataset:
         to_remove = int(len(sample.text) * ratio_to_remove)
         text = sample.text
@@ -69,6 +96,12 @@ def remove_random_sentences(dataset, ratio_to_remove=TD_DATA_SENTENCE_REMOVE_PER
 
 
 def save_text_classification_dataset(filename, dataset):
+    """
+    Saves the dataset. The sentences are stored in one single line, so they can processed better
+    when they are read for training or test
+    :param str filename: filename where to store the dataset
+    :param List[DataSample] dataset: the dataset of DataSample
+    """
     with open(os.path.join(DIR_DATA_TEXT_CLASSIFICATION, filename), 'wb') as file:
         for data in dataset:
             file.write('{} '.format(data.real_class))
