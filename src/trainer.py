@@ -27,6 +27,24 @@ class TaskSpec(object):
         else:
             self.cluster_spec = None
 
+    def is_chief(self):
+        return self.index == 0
+
+    def is_ps(self):
+        return self.job_name == 'ps'
+
+    def is_worker(self):
+        return self.job_name == 'worker'
+
+    def join_if_ps(self):
+        if self.is_ps():
+            server = tf.train.Server(self.cluster_spec,
+                                     job_name=self.job_name,
+                                     task_index=self.index)
+            server.join()
+            return True
+        return False
+
 
 def get_task_spec():
     """
@@ -47,8 +65,8 @@ def get_task_spec():
     # get task from environment:
     if 'JOB_NAME' in os.environ:
         return TaskSpec(job_name=os.environ['JOB_NAME'], index=os.environ['TASK_INDEX'],
-                        ps_hosts=os.environ.get(['PS_HOSTS'], None),
-                        worker_hosts=os.environ.get(['WORKER_HOSTS'], None))
+                        ps_hosts=os.environ.get('PS_HOSTS', None),
+                        worker_hosts=os.environ.get('WORKER_HOSTS', None))
     if 'TF_CONFIG' in os.environ:
         env = json.loads(os.environ.get('TF_CONFIG', '{}'))
         task_data = env.get('task', None) or {'type': 'master', 'index': 0}
@@ -139,7 +157,7 @@ class Trainer(session_run_hook.SessionRunHook):
             server = tf.train.Server(task_spec.cluster_spec,
                                      job_name=task_spec.job_name,
                                      task_index=task_spec.index)
-            if task_spec.job_name == 'ps':
+            if task_spec.is_ps():
                 server.join()
             target = server.target
             device = tf.train.replica_device_setter(
