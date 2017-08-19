@@ -277,7 +277,8 @@ class Word2VecTrainer(trainer.Trainer):
                     self.save_embeddings(session)
                 else:
                     embeddings_file_timestamp = os.path.getmtime(embeddings_filepath)
-                    if current_time - embeddings_file_timestamp > 15 * 60:
+                    # save the embeddings every 30 minutes
+                    if current_time - embeddings_file_timestamp > 30 * 60:
                         self.save_embeddings(session)
 
     def after_create_session(self, session, coord):
@@ -292,11 +293,12 @@ class Word2VecTrainer(trainer.Trainer):
         norm = np.sqrt(np.sum(np.square(embeddings_eval)))
         normalized_embeddings = embeddings_eval / norm
         embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
-        with open(os.path.join(DIR_DATA_WORD2VEC, embeddings_file), 'wb') as file:
+        embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
+        with open(embeddings_filepath, 'wb') as file:
             writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             writer.writerows(normalized_embeddings)
         # copy the embeddings file to the log dir so we can download it from tensorport
-        shutil.copy(os.path.join(DIR_DATA_WORD2VEC, embeddings_file), self.log_dir)
+        shutil.copy(embeddings_filepath, self.log_dir)
 
 
 if __name__ == '__main__':
