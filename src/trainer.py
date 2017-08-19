@@ -64,14 +64,14 @@ def get_task_spec():
                         ps_hosts=args.ps_hosts, worker_hosts=args.worker_hosts)
     # get task from environment:
     if 'JOB_NAME' in os.environ:
-        return TaskSpec(job_name=os.environ['JOB_NAME'], index=os.environ['TASK_INDEX'],
+        return TaskSpec(job_name=os.environ['JOB_NAME'], index=int(os.environ['TASK_INDEX']),
                         ps_hosts=os.environ.get('PS_HOSTS', None),
                         worker_hosts=os.environ.get('WORKER_HOSTS', None))
     if 'TF_CONFIG' in os.environ:
         env = json.loads(os.environ.get('TF_CONFIG', '{}'))
         task_data = env.get('task', None) or {'type': 'master', 'index': 0}
         cluster_data = env.get('cluster', None) or {'ps': None, 'worker': None}
-        return TaskSpec(job_name=task_data['type'], index=task_data['index'],
+        return TaskSpec(job_name=task_data['type'], index=int(task_data['index']),
                         ps_hosts=cluster_data['ps'], worker_hosts=cluster_data['worker'])
     # return emtpy task spec for running in local
     return TaskSpec()

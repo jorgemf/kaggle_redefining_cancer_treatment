@@ -303,5 +303,4 @@ class Word2VecTrainer(trainer.Trainer):
 
 if __name__ == '__main__':
     # start the training
-    if not trainer.get_task_spec().join_if_ps():
-        Word2VecTrainer(dataset=Word2VecDataset()).train()
+    Word2VecTrainer(dataset=Word2VecDataset()).train()
