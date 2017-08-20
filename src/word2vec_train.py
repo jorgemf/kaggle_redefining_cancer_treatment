@@ -273,11 +273,10 @@ class Word2VecTrainer(trainer.Trainer):
                                                    self.output_word: words,
                                                })
         if self.is_chief:
-            if step % 10000 == 0:
+            if step % 100000 == 0:
                 elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
                 m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
                 print(m.format(step, loss_val, lr, elapsed_time))
-            if step % 1000 == 0:
                 current_time = time.time()
                 embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
                 embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
@@ -306,7 +305,8 @@ class Word2VecTrainer(trainer.Trainer):
             writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             writer.writerows(normalized_embeddings)
         # copy the embeddings file to the log dir so we can download it from tensorport
-        shutil.copy(embeddings_filepath, self.log_dir)
+        if os.path.exists(embeddings_filepath):
+            shutil.copy(embeddings_filepath, self.log_dir)
 
 
 if __name__ == '__main__':
