@@ -8,6 +8,7 @@ from datetime import timedelta
 import shutil
 from tensorflow.python.training import training_util
 from tensorflow.contrib.tensorboard.plugins import projector
+from tensorflow.contrib import layers
 from src import trainer
 from src.word2vec_process_data import load_word2vec_data
 from src.configuration import *
@@ -141,28 +142,28 @@ class Word2VecDataset(object):
         return self._size
 
     def _samples_generator(self):
-        while True:
-            with open(self.data_file) as f:
-                for l in f:
-                    text_line = [int(w) for w in l.split()]
-                    probabilities_tl = [self.probabilities_dict[w] for w in text_line]
-                    len_text_line = len(text_line)
-                    for i, word in enumerate(text_line):
-                        aw_min = max(0, i - self.window_adjacent_words)
-                        aw_max = min(len_text_line, i + self.window_adjacent_words + 1)
-                        adjacent_words = text_line[aw_min:i] + text_line[i + 1:aw_max]
+        # while True:
+        with open(self.data_file) as f:
+            for l in f:
+                text_line = [int(w) for w in l.split()]
+                probabilities_tl = [self.probabilities_dict[w] for w in text_line]
+                len_text_line = len(text_line)
+                for i, word in enumerate(text_line):
+                    aw_min = max(0, i - self.window_adjacent_words)
+                    aw_max = min(len_text_line, i + self.window_adjacent_words + 1)
+                    adjacent_words = text_line[aw_min:i] + text_line[i + 1:aw_max]
 
-                        nsw_min = max(0, min(aw_min, i - self.window_close_words))
-                        nsw_max = min(len_text_line, max(aw_max, i + self.window_close_words + 1))
-                        close_words = text_line[nsw_min:aw_min] + text_line[aw_max:nsw_max]
+                    nsw_min = max(0, min(aw_min, i - self.window_close_words))
+                    nsw_max = min(len_text_line, max(aw_max, i + self.window_close_words + 1))
+                    close_words = text_line[nsw_min:aw_min] + text_line[aw_max:nsw_max]
 
-                        prob = probabilities_tl[nsw_min:aw_min] + probabilities_tl[aw_max:nsw_max]
-                        close_words_selected = select_random_labels(close_words,
-                                                                    self.close_words_size, prob)
+                    prob = probabilities_tl[nsw_min:aw_min] + probabilities_tl[aw_max:nsw_max]
+                    close_words_selected = select_random_labels(close_words,
+                                                                self.close_words_size, prob)
 
-                        context = adjacent_words + close_words_selected
-                        for label in context:
-                            yield np.int32(label), np.int32(word)
+                    context = adjacent_words + close_words_selected
+                    for label in context:
+                        yield np.int32(label), np.int32(word)
 
     def read(self):
         return self.batch_generator.next()
@@ -202,6 +203,9 @@ class Word2VecTrainer(trainer.Trainer):
         matrix_dimension = [vocabulary_size, embedding_size]
         self.embeddings = tf.Variable(tf.random_uniform(matrix_dimension, -1.0, 1.0),
                                       name='embeddings')
+        self.embeddings = tf.get_variable(shape=matrix_dimension,
+                                          initializer=layers.xavier_initializer(),
+                                          dtype=tf.float32, name='embeddings')
         embed = tf.nn.embedding_lookup(self.embeddings, input_label_reshaped)
 
         # NCE loss
@@ -258,6 +262,10 @@ class Word2VecTrainer(trainer.Trainer):
 
     def train_step(self, session, graph_data):
         labels, words = self.dataset.read()
+        if len(labels) != W2V_BATCH_SIZE or len(words) != W2V_BATCH_SIZE:
+            print labels
+            print words
+            raise ValueError("labels {} words {}".format(len(labels), len(words)))
         lr, _, _, loss_val, step = session.run([self.learning_rate, self.training_op, self.loss,
                                                 self.average_loss, self.global_step],
                                                feed_dict={
