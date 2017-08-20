@@ -44,6 +44,12 @@ TC_BATCH_SIZE = 4  # batch size for the training
 TC_MODEL_HIDDEN = 200  # hidden GRUCells for the model
 TC_MODEL_LAYERS = 3  # number of layers of the model
 TC_MODEL_DROPOUT = 0.8  # dropout during training in the model
-TC_LEARNING_RATE_INITIAL = 0.001  # initial learning rate for gradient descent
+TC_LEARNING_RATE_INITIAL = 0.0003  # initial learning rate for gradient descent
 TC_LEARNING_RATE_DECAY = 0.9  # decay of learning rate
 TC_LEARNING_RATE_DECAY_STEPS = 1000  # steps to decay the learning rate
+
+from text_classification_model_simple import ModelSimple
+TC_MODEL = ModelSimple() # model to use in the text classification
+
+
+MAX_SEQUENCE_LENGTH = 200
