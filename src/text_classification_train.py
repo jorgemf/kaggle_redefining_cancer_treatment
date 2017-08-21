@@ -122,12 +122,10 @@ class TextClassificationTrainer(trainer.Trainer):
     def train_step(self, session, graph_data):
         lr, _, loss_val, step = session.run([self.learning_rate, self.optimizer,
                                              self.loss, self.global_step])
-        # if self.is_chief and step % 10 == 0:
-        if self.is_chief and step % 1 == 0:
+        if self.is_chief and step % 100 == 0:
             elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
             m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
             print(m.format(step, loss_val, lr, elapsed_time))
-        pass
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()

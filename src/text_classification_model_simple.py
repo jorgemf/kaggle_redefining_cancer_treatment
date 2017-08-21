@@ -99,7 +99,6 @@ class ModelSimple(object):
         """
         logits = graph_data['logits']
         loss = tf.nn.softmax_cross_entropy_with_logits(labels=targets, logits=logits)
-        loss = tf.Print(loss, [loss, targets, logits], summarize=40)
         return tf.reduce_mean(loss)
 
     def optimize(self, loss, global_step,
