@@ -245,9 +245,9 @@ class Word2VecTrainer(trainer.Trainer):
         summary_writer = tf.summary.FileWriter(self.log_dir)
         projector.visualize_embeddings(summary_writer, config)
 
-        # in case you want to get the embeddings from the graph:
-        # norm = tf.sqrt(tf.reduce_sum(tf.square(self.embeddings), 1, keep_dims=True))
-        # self.normalized_embeddings = self.embeddings / norm
+        # normalize the embeddings to save them
+        norm = tf.sqrt(tf.reduce_sum(tf.square(self.embeddings), 1, keep_dims=True))
+        self.normalized_embeddings = self.embeddings / norm
 
         return None
 
@@ -256,10 +256,6 @@ class Word2VecTrainer(trainer.Trainer):
 
     def train_step(self, session, graph_data):
         labels, words = self.dataset.read()
-        if len(labels) != W2V_BATCH_SIZE or len(words) != W2V_BATCH_SIZE:
-            print labels
-            print words
-            raise ValueError("labels {} words {}".format(len(labels), len(words)))
         lr, _, loss_val, step = session.run([self.learning_rate, self.optimizer, self.loss,
                                              self.global_step],
                                             feed_dict={
@@ -274,7 +270,7 @@ class Word2VecTrainer(trainer.Trainer):
                 current_time = time.time()
                 embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
                 embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
-                if not os.path.exists(embeddings_file):
+                if not os.path.exists(embeddings_filepath):
                     self.save_embeddings(session)
                 else:
                     embeddings_file_timestamp = os.path.getmtime(embeddings_filepath)
@@ -290,9 +286,7 @@ class Word2VecTrainer(trainer.Trainer):
 
     def save_embeddings(self, session):
         print('Saving embeddings in text format...')
-        embeddings_eval = self.embeddings.eval(session=session)
-        norm = np.sqrt(np.sum(np.square(embeddings_eval)))
-        normalized_embeddings = embeddings_eval / norm
+        normalized_embeddings = session.run([self.normalized_embeddings])[0]
         embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
         embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
         with open(embeddings_filepath, 'wb') as file:
