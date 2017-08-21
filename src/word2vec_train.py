@@ -228,12 +228,6 @@ class Word2VecTrainer(trainer.Trainer):
         sgd = tf.train.GradientDescentOptimizer(self.learning_rate)
         self.optimizer = sgd.minimize(self.loss, global_step=self.global_step)
 
-        # summaries and moving average
-        ema = tf.train.ExponentialMovingAverage(0.9)
-        ema_assign = ema.apply([self.loss])
-        with tf.control_dependencies([self.optimizer]):
-            self.training_op = tf.group(ema_assign)
-        self.average_loss = ema.average(self.loss)
         # saver to save the model
         self.saver = tf.train.Saver()
         # check a nan value in the loss
@@ -266,12 +260,12 @@ class Word2VecTrainer(trainer.Trainer):
             print labels
             print words
             raise ValueError("labels {} words {}".format(len(labels), len(words)))
-        lr, _, _, loss_val, step = session.run([self.learning_rate, self.training_op, self.loss,
-                                                self.average_loss, self.global_step],
-                                               feed_dict={
-                                                   self.input_label: labels,
-                                                   self.output_word: words,
-                                               })
+        lr, _, loss_val, step = session.run([self.learning_rate, self.optimizer, self.loss,
+                                             self.global_step],
+                                            feed_dict={
+                                                self.input_label: labels,
+                                                self.output_word: words,
+                                            })
         if self.is_chief:
             if step % 100000 == 0:
                 elapsed_time = str(timedelta(seconds=time.time() - self.init_time))

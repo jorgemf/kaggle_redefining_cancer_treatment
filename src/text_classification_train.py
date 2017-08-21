@@ -109,12 +109,6 @@ class TextClassificationTrainer(trainer.Trainer):
         if self.learning_rate is not None:
             tf.summary.scalar('learning_rate', self.learning_rate)
 
-        # summaries and moving average
-        ema = tf.train.ExponentialMovingAverage(0.9)
-        ema_assign = ema.apply([self.loss])
-        with tf.control_dependencies([self.optimizer]):
-            self.training_op = tf.group(ema_assign)
-        self.average_loss = ema.average(self.loss)
         # saver to save the model
         self.saver = tf.train.Saver()
         # check a nan value in the loss
@@ -126,9 +120,8 @@ class TextClassificationTrainer(trainer.Trainer):
         return self.model()
 
     def train_step(self, session, graph_data):
-        lr, _, _, loss_val, step = session.run([self.learning_rate, self.training_op,
-                                                self.loss, self.average_loss,
-                                                self.global_step])
+        lr, _, loss_val, step = session.run([self.learning_rate, self.optimizer,
+                                             self.loss, self.global_step])
         # if self.is_chief and step % 10 == 0:
         if self.is_chief and step % 1 == 0:
             elapsed_time = str(timedelta(seconds=time.time() - self.init_time))

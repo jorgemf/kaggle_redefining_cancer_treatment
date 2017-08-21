@@ -25,15 +25,15 @@ MAX_SEQUENCE_LENGTH = 117000  # this is calculated when the text_classification 
 
 # word2vec
 
-W2V_EPOCHS = 1  # iterations over the whole dataset
+W2V_EPOCHS = 3  # iterations over the whole dataset
 W2V_BATCH_SIZE = 128  # batch size for the training
 W2V_WINDOW_ADJACENT_WORDS = 1  # adjacent words to be added to the context
 W2V_CLOSE_WORDS_SIZE = 2  # close words (non-adjacent) to be added to the context
 W2V_WINDOW_CLOSE_WORDS = 6  # maximum distance between the target word and the close words
 W2V_NEGATIVE_NUM_SAMPLES = 64  # number of negative examples to sample.
-W2V_LEARNING_RATE_INITIAL = 0.1  # initial learning rate for gradient descent
-W2V_LEARNING_RATE_DECAY = 0.928  # decay of learning rate
-W2V_LEARNING_RATE_DECAY_STEPS = 10000  # steps to decay the learning rate
+W2V_LEARNING_RATE_INITIAL = 0.01  # initial learning rate for gradient descent
+W2V_LEARNING_RATE_DECAY = 0.9  # decay of learning rate
+W2V_LEARNING_RATE_DECAY_STEPS = 100000  # steps to decay the learning rate
 
 # text classification
 
@@ -44,12 +44,9 @@ TC_BATCH_SIZE = 4  # batch size for the training
 TC_MODEL_HIDDEN = 200  # hidden GRUCells for the model
 TC_MODEL_LAYERS = 3  # number of layers of the model
 TC_MODEL_DROPOUT = 0.8  # dropout during training in the model
-TC_LEARNING_RATE_INITIAL = 0.0003  # initial learning rate for gradient descent
+TC_LEARNING_RATE_INITIAL = 0.001  # initial learning rate for gradient descent
 TC_LEARNING_RATE_DECAY = 0.9  # decay of learning rate
 TC_LEARNING_RATE_DECAY_STEPS = 1000  # steps to decay the learning rate
 
 from text_classification_model_simple import ModelSimple
 TC_MODEL = ModelSimple() # model to use in the text classification
-
-
-MAX_SEQUENCE_LENGTH = 200
