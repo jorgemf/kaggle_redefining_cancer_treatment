@@ -24,19 +24,7 @@ class ModelSimple(object):
         :param boolean training: whether the model is built for training or not
         :return Dict[str,tf.Tensor]: a dict with logits and prediction tensors
         """
-        # first vector is a zeros vector used for padding
-        embeddings_dimension = len(embeddings[0])
-        embeddings = [[0.0] * embeddings_dimension] + embeddings
-        embeddings = tf.constant(embeddings, name='embeddings', dtype=tf.float32)
-        # this means we need to add 1 to the input_text
-        input_text = tf.add(input_text, 1)
-
-        # mask to know where there is a word and where padding
-        mask = tf.greater(input_text, 0)  # true for words false for padding
-        # length of the sequences without padding
-        sequence_length = tf.reduce_sum(tf.cast(mask, tf.int32), 1)
-
-        embedded_sequence = tf.nn.embedding_lookup(embeddings, input_text)
+        embedded_sequence, sequence_length = self.model_embedded_sequence(embeddings, input_text)
 
         # Recurrent network.
         cells = []
@@ -49,6 +37,44 @@ class ModelSimple(object):
         sequence_output, _ = tf.nn.dynamic_rnn(network, embedded_sequence, dtype=tf.float32,
                                                sequence_length=sequence_length)
 
+        output = self.model_sequence_output(sequence_output, sequence_length)
+
+        logits, prediction = self.model_full_connected_logits_prediction(output, num_hidden,
+                                                                         num_output_classes)
+        return {
+            'logits': logits,
+            'prediction': prediction,
+        }
+
+    def model_embedded_sequence(self, embeddings, input_text):
+        """
+        Given the embeddings and the input text returns the embedded sequence and
+        the sequence lenght
+        :param embeddings:
+        :param input_text:
+        :return: (embedded_sequence, sequence_lenghth)
+        """
+        # first vector is a zeros vector used for padding
+        embeddings_dimension = len(embeddings[0])
+        embeddings = [[0.0] * embeddings_dimension] + embeddings
+        embeddings = tf.constant(embeddings, name='embeddings', dtype=tf.float32)
+        # this means we need to add 1 to the input_text
+        input_text = tf.add(input_text, 1)
+        # mask to know where there is a word and where padding
+        mask = tf.greater(input_text, 0)  # true for words false for padding
+        # length of the sequences without padding
+        sequence_length = tf.reduce_sum(tf.cast(mask, tf.int32), 1)
+        embedded_sequence = tf.nn.embedding_lookup(embeddings, input_text)
+        return embedded_sequence, sequence_length
+
+    def model_sequence_output(self, sequence_output, sequence_length):
+        """
+        Given the sequence output and the sequence length it returns the output of the sequence
+        based on the lengths
+        :param sequence_output:
+        :param sequence_length:
+        :return: The sequence output
+        """
         # get the last relevant output of the sequence
         batch_size = tf.shape(sequence_output)[0]
         max_length = int(sequence_output.get_shape()[1])
@@ -56,20 +82,25 @@ class ModelSimple(object):
         index = tf.range(0, batch_size) * max_length + (sequence_length - 1)
         flat = tf.reshape(sequence_output, [-1, output_size])
         output = tf.gather(flat, index)
-        tf.summary.histogram('dynamic_rnn_output', output)
+        return output
+
+    def model_full_connected_logits_prediction(self, output, num_hidden, num_output_classes):
+        """
+        Given an output it applies a batch normalization and a full connected layer to create the
+        logits and the predictions
+        :param output:
+        :param num_hidden:
+        :param num_output_classes:
+        :return: (logits, prediction)
+        """
         # apply batch normalization to speed up training time
         output = slim.batch_norm(output, scope='output_batch_norm')
         # add a full connected layer
         weight = tf.truncated_normal([num_hidden, num_output_classes], stddev=0.01)
         bias = tf.constant(0.1, shape=[num_output_classes])
         logits = tf.matmul(output, weight) + bias
-        tf.summary.histogram('dynamic_rnn_logits', output)
         prediction = tf.nn.softmax(logits)
-
-        return {
-            'logits': logits,
-            'prediction': prediction,
-        }
+        return logits, prediction
 
     def model_arg_scope(self, batch_norm_decay=0.9997, batch_norm_epsilon=0.001):
         with slim.arg_scope([slim.batch_norm],
