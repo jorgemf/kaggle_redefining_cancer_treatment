@@ -70,8 +70,7 @@ class TextClassificationTrainer(trainer.Trainer):
         self.dataset = dataset
         self.text_classification_model = text_classification_model
         max_steps = epochs * dataset.get_size()
-        super(TextClassificationTrainer, self).__init__(DIR_TC_LOGDIR, max_steps=max_steps,
-                                                        save_summaries_steps=1)  # TODO
+        super(TextClassificationTrainer, self).__init__(DIR_TC_LOGDIR, max_steps=max_steps)
 
     def _load_embeddings(self, vocabulary_size, embeddings_size):
         embeddings = []

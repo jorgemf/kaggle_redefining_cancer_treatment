@@ -27,7 +27,7 @@ class ModelSimple(object):
         # first vector is a zeros vector used for padding
         embeddings_dimension = len(embeddings[0])
         embeddings = [[0.0] * embeddings_dimension] + embeddings
-        embeddings = tf.Variable(embeddings, name='embeddings', dtype=tf.float32)
+        embeddings = tf.constant(embeddings, name='embeddings', dtype=tf.float32)
         # this means we need to add 1 to the input_text
         input_text = tf.add(input_text, 1)
 
@@ -37,7 +37,6 @@ class ModelSimple(object):
         sequence_length = tf.reduce_sum(tf.cast(mask, tf.int32), 1)
 
         embedded_sequence = tf.nn.embedding_lookup(embeddings, input_text)
-        # TODO convolution over sequence?
 
         # Recurrent network.
         cells = []
@@ -49,7 +48,6 @@ class ModelSimple(object):
         network = tf.nn.rnn_cell.MultiRNNCell(cells)
         sequence_output, _ = tf.nn.dynamic_rnn(network, embedded_sequence, dtype=tf.float32,
                                                sequence_length=sequence_length)
-        # TODO tf.nn.bidirectional_rnn?
 
         # get the last relevant output of the sequence
         batch_size = tf.shape(sequence_output)[0]
