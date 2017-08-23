@@ -21,8 +21,11 @@ class ModelSimpleCNN(ModelSimple):
                 cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=dropout)
             cells.append(cell)
         network = tf.nn.rnn_cell.MultiRNNCell(cells)
+        batch_size = tf.shape(input_text)[0]
+        type = embedded_sequence.dtype
         sequence_output, _ = tf.nn.dynamic_rnn(network, conv_sequence, dtype=tf.float32,
-                                               sequence_length=sequence_length)
+                                               sequence_length=sequence_length,
+                                               initial_state=network.zero_state(batch_size, type))
 
         output = self.model_sequence_output(sequence_output, sequence_length)
 
