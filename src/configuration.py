@@ -47,6 +47,19 @@ TC_MODEL_DROPOUT = 0.8  # dropout during training in the model
 TC_LEARNING_RATE_INITIAL = 0.001  # initial learning rate for gradient descent
 TC_LEARNING_RATE_DECAY = 0.9  # decay of learning rate
 TC_LEARNING_RATE_DECAY_STEPS = 1000  # steps to decay the learning rate
+TC_HATT_WORD_OUTPUT_SIZE = 128
+TC_HATT_SENTENCE_OUTPUT_SIZE = 128
 
 from text_classification_model_simple import ModelSimple
-TC_MODEL = ModelSimple() # model to use in the text classification
+TC_MODEL = ModelSimple()  # model to use in the text classification
+
+# MAX_SEQUENCE_LENGTH = 1000
+# from text_classification_model_simple_bidirectional import ModelSimpleBidirectional
+# DIR_TC_LOGDIR = os.path.join('.', 'model', 'train', 'text_classification_bidirectional')
+# TC_MODEL = ModelSimpleBidirectional()
+# from text_classification_model_simple_cnn import ModelSimpleCNN
+# DIR_TC_LOGDIR = os.path.join('.', 'model', 'train', 'text_classification_cnn')
+# TC_MODEL = ModelSimpleCNN()
+# from text_classification_model_sc_lstm import ModelScLstm
+# DIR_TC_LOGDIR = os.path.join('.', 'model', 'train', 'text_classification_sc_lstm')
+# TC_MODEL = ModelScLstm()

@@ -22,6 +22,7 @@ class ModelSimpleBidirectional(ModelSimple):
                                             initial_state_bw=cell_bw.zero_state(batch_size, type),
                                             inputs=embedded_sequence,
                                             dtype=tf.float32,
+                                            swap_memory=True,
                                             sequence_length=sequence_length)
         sequence_output = tf.concat((fw_outputs, bw_outputs), 2)
 
