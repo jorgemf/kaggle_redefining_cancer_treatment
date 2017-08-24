@@ -111,12 +111,59 @@ def save_text_classification_dataset(filename, dataset):
             file.write('\n')
 
 
+def data_stats(train_set, test_set):
+    """
+    Show statistics of the datasets
+    :param train_set:
+    :param test_set:
+    """
+    sum_docs_lengths = 0
+    sum_sentences_lengths = 0
+    num_sentences = 0
+    max_doc_length = 0
+    max_sentence_length = 0
+    max_sentences_doc = 0
+    num_docs = 0
+    for data in train_set + test_set:
+        num_docs += 1
+        dwl = 0
+        dsl = len(data.text)
+        num_sentences += dsl
+        if dsl > max_sentences_doc:
+            max_sentences_doc = dsl
+        for sentence in data.text:
+            sl = len(sentence)
+            dwl += sl
+            sum_sentences_lengths += sl - 1  # remove the last dot
+            if sl > max_sentence_length:
+                max_sentence_length = sl
+        sum_docs_lengths += dwl
+        if dwl > max_doc_length:
+            max_doc_length = dwl
+
+    print('Average words in a doc is {}'.format(sum_docs_lengths / num_docs))
+    print('Maximum words in a doc is {}'.format(max_doc_length))
+    print('Average sentences in a doc is {}'.format(num_sentences / num_docs))
+    print('Maximum sentences in a doc is {}'.format(max_sentences_doc))
+    print('Average sentence is {}'.format(sum_sentences_lengths / num_sentences))
+    print('Longest sentence is {}'.format(max_sentence_length))
+    # Average words in a doc is 12715
+    # Maximum words in a doc is 116760
+    # Average sentences in a doc is 339
+    # Maximum sentences in a doc is 3282
+    # Average sentence is 36
+    # Longest sentence is 4336
+
 if __name__ == '__main__':
     print('Generate text data augmentation for text classification model...')
     train_set = load_csv_dataset('train_set_numbers_parsed')
+    test_set = load_csv_dataset('test_set_numbers_parsed')
     print('Transform words into ids')
     word_dict = load_word2vec_dict('word2vec_dataset')
     transform_words_in_ids(train_set, word_dict)
+    transform_words_in_ids(test_set, word_dict)
+    print('Calculating statistics...')
+    data_stats(train_set, test_set)
     print('Balancing classes...')
     train_set = balance_class(train_set)
     print('Removing random sentences...')
@@ -124,15 +171,4 @@ if __name__ == '__main__':
     print('Saving final training dataset...')
     save_text_classification_dataset('train_set', train_set)
     print('Generating samples for test set...')
-    test_set = load_csv_dataset('test_set_numbers_parsed')
-    transform_words_in_ids(test_set, word_dict)
     save_text_classification_dataset('test_set', test_set)
-    print('Calculating longest test...')
-    l = 0
-    for data in train_set + test_set:
-        dl = 0
-        for sentence in data.text:
-            dl += len(sentence)
-        if dl > l:
-            l = dl
-    print('Longest sequence of test is {}'.format(l))

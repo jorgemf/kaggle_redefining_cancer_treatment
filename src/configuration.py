@@ -21,7 +21,9 @@ DIR_WIKIPEDIA_GENES = os.path.join(DIR_GENERATED_DATA, 'gen')
 
 VOCABULARY_SIZE = 30000
 EMBEDDINGS_SIZE = 128
-MAX_SEQUENCE_LENGTH = 117000  # this is calculated when the text_classification dataset is created
+MAX_WORDS = 50000  # maximum number of words in the document
+MAX_SENTENCES = 1000  # maximum number of sentences in the document
+MAX_WORDS_IN_SENTENCE = 60  # maximum number of words per sentence in the document
 
 # word2vec
 
@@ -50,6 +52,8 @@ TC_LEARNING_RATE_DECAY_STEPS = 1000  # steps to decay the learning rate
 TC_HATT_WORD_OUTPUT_SIZE = 128
 TC_HATT_SENTENCE_OUTPUT_SIZE = 128
 
+from text_classification_dataset import TextClassificationDataset
+TC_DATASET = TextClassificationDataset(type='train', sentence_split=False)
 from text_classification_model_simple import ModelSimple
 TC_MODEL = ModelSimple()  # model to use in the text classification
 
