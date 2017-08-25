@@ -23,7 +23,7 @@ class TextClassificationDataset(DatasetFilelines):
         self.type = type
         self.sentence_split = None
         if sentence_split:
-            dict_filename = 'word2vec_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
+            dict_filename = 'word2vec_dataset_{}_dict'.format(VOCABULARY_SIZE)
             dict_filepath = os.path.join(DIR_DATA_WORD2VEC, dict_filename)
             with tf.gfile.FastGFile(dict_filepath, 'r') as f:
                 for line in f:
@@ -52,11 +52,11 @@ class TextClassificationDataset(DatasetFilelines):
             while len(sequence) < MAX_SENTENCES:
                 sequence.append([-1] * MAX_WORDS_IN_SENTENCE)
             for i, sentence in enumerate(sequence):
-                if len(sentence) > MAX_SENTENCES:
+                if len(sentence) > MAX_WORDS_IN_SENTENCE:
                     sentence = sentence[:MAX_WORDS_IN_SENTENCE]
                 while len(sentence) < MAX_WORDS_IN_SENTENCE:
                     sentence.append(-1)
-                sequence[i] = sentence
+                sequence[i] = np.asarray(sentence, dtype=np.int32)
         else:
             if len(sequence) > MAX_WORDS:
                 sequence = sequence[:MAX_WORDS]
@@ -76,7 +76,7 @@ class TextClassificationDataset(DatasetFilelines):
 
     def py_fun_parse_example_reshape(self, inputs, outputs):
         if self.sentence_split is not None:
-            inputs[0] = tf.reshape(inputs[0], [MAX_SENTENCES])
+            inputs[0] = tf.reshape(inputs[0], [MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
         else:
             inputs[0] = tf.reshape(inputs[0], [MAX_WORDS])
         outputs[0] = tf.reshape(outputs[0], [1])

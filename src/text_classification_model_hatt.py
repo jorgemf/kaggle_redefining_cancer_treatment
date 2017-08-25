@@ -4,7 +4,7 @@ from configuration import *
 from text_classification_model_simple import ModelSimple
 
 
-class ModelHATT(object):
+class ModelHATT(ModelSimple):
     def model(self, input_words, num_output_classes, embeddings, num_hidden=TC_MODEL_HIDDEN,
               dropout=TC_MODEL_DROPOUT, word_output_size=TC_HATT_WORD_OUTPUT_SIZE,
               sentence_output_size=TC_HATT_SENTENCE_OUTPUT_SIZE, training=True):
@@ -26,23 +26,25 @@ class ModelHATT(object):
         embedded_sequence = tf.nn.embedding_lookup(embeddings, input_words)
 
         # RNN word level
-        word_level_inputs = tf.reshape(embedded_sequence,
-                                       [batch_size * sentence_size, word_size, embeddings_size])
-        word_level_lengths = tf.reshape(input_words_length, [batch_size * sentence_size])
+        with tf.variable_scope('word_level'):
+            word_level_inputs = tf.reshape(embedded_sequence,
+                                           [batch_size * sentence_size, word_size, embeddings_size])
+            word_level_lengths = tf.reshape(input_words_length, [batch_size * sentence_size])
 
-        word_level_output = self._bidirectional_rnn(word_level_inputs, word_level_lengths,
-                                                    num_hidden)
-        word_level_output = self._attention(word_level_output, word_output_size)
-        word_level_output = layers.dropout(word_level_output, keep_prob=dropout,
-                                           is_training=training)
-        # RNN sentence level
-        sentence_level_inputs = tf.reshape(word_level_output,
-                                           [batch_size, sentence_size, word_output_size])
-        sentence_level_output = self._bidirectional_rnn(sentence_level_inputs, sentences_length,
+            word_level_output = self._bidirectional_rnn(word_level_inputs, word_level_lengths,
                                                         num_hidden)
-        sentence_level_output = self._attention(sentence_level_output, sentence_output_size)
-        sentence_level_output = layers.dropout(sentence_level_output, keep_prob=dropout,
+            word_level_output = self._attention(word_level_output, word_output_size)
+            word_level_output = layers.dropout(word_level_output, keep_prob=dropout,
                                                is_training=training)
+        # RNN sentence level
+        with tf.variable_scope('sentence_level'):
+            sentence_level_inputs = tf.reshape(word_level_output,
+                                               [batch_size, sentence_size, word_output_size])
+            sentence_level_output = self._bidirectional_rnn(sentence_level_inputs, sentences_length,
+                                                            num_hidden)
+            sentence_level_output = self._attention(sentence_level_output, sentence_output_size)
+            sentence_level_output = layers.dropout(sentence_level_output, keep_prob=dropout,
+                                                   is_training=training)
 
         # classifier
 
