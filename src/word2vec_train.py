@@ -182,7 +182,10 @@ class Word2VecTrainer(trainer.Trainer):
         config.gpu_options.allow_growth = True
         max_steps = epochs * dataset.get_size()
         super(Word2VecTrainer, self).__init__(DIR_W2V_LOGDIR, max_steps=max_steps,
-                                              monitored_training_session_config=config)
+                                              monitored_training_session_config=config,
+                                              log_step_count_steps=1000,
+                                              save_checkpoint_secs=10000,
+                                              save_summaries_steps=1000)
 
     def model(self,
               batch_size=W2V_BATCH_SIZE,
