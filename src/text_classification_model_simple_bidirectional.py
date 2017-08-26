@@ -1,19 +1,24 @@
 import tensorflow as tf
+import tensorflow.contrib.layers as layers
 from configuration import *
 from text_classification_model_simple import ModelSimple
+from text_classification_train import TextClassificationTrainer
+from text_classification_dataset import TextClassificationDataset
 
 
 class ModelSimpleBidirectional(ModelSimple):
+    """
+    Text classification using a bidirectional dynamic rnn and GRU cells
+    """
 
     def model(self, input_text, num_output_classes, embeddings, num_hidden=TC_MODEL_HIDDEN,
               num_layers=TC_MODEL_LAYERS, dropout=TC_MODEL_DROPOUT, training=True):
-
         embedded_sequence, sequence_length = self.model_embedded_sequence(embeddings, input_text)
+        batch_size, max_length, _ = tf.unstack(tf.shape(embedded_sequence))
 
         # Recurrent network.
         cell_fw = tf.nn.rnn_cell.GRUCell(num_hidden)
         cell_bw = tf.nn.rnn_cell.GRUCell(num_hidden)
-        batch_size = tf.shape(input_text)[0]
         type = embedded_sequence.dtype
         (fw_outputs, bw_outputs), _ = \
             tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw,
@@ -25,12 +30,25 @@ class ModelSimpleBidirectional(ModelSimple):
                                             swap_memory=True,
                                             sequence_length=sequence_length)
         sequence_output = tf.concat((fw_outputs, bw_outputs), 2)
+        # get last output of the dynamic_rnn
+        sequence_output = tf.reshape(sequence_output, [batch_size * max_length, num_hidden * 2])
+        indexes = tf.range(batch_size) * max_length + (sequence_length - 1)
+        output = tf.gather(sequence_output, indexes)
 
-        output = self.model_sequence_output(sequence_output, sequence_length)
+        # full connected layer
+        output = tf.nn.dropout(output, dropout)
+        logits = layers.fully_connected(output, num_output_classes, activation_fn=None)
 
-        logits, prediction = self.model_full_connected_logits_prediction(output, num_hidden*2,
-                                                                         num_output_classes)
+        prediction = tf.nn.softmax(logits)
+
         return {
             'logits': logits,
             'prediction': prediction,
         }
+
+
+if __name__ == '__main__':
+    trainer = TextClassificationTrainer(dataset=TextClassificationDataset(type='train'),
+                                        text_classification_model=ModelSimpleBidirectional(),
+                                        logdir='{}_{}'.format(DIR_TC_LOGDIR, 'bidirectional'))
+    trainer.train()

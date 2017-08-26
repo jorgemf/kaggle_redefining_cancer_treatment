@@ -1,13 +1,15 @@
 import tensorflow as tf
-from configuration import *
 from tensorflow.contrib import slim
 from tensorflow.python.framework import ops
+import tensorflow.contrib.layers as layers
 from configuration import *
+from text_classification_train import TextClassificationTrainer
+from text_classification_dataset import TextClassificationDataset
 
 
 class ModelSimple(object):
     """
-    Base class to create models for text classification.
+    Base class to create models for text classification. It uses several layers of GRU cells.
     """
 
     def model(self, input_text, num_output_classes, embeddings, num_hidden=TC_MODEL_HIDDEN,
@@ -25,6 +27,7 @@ class ModelSimple(object):
         :return Dict[str,tf.Tensor]: a dict with logits and prediction tensors
         """
         embedded_sequence, sequence_length = self.model_embedded_sequence(embeddings, input_text)
+        batch_size, max_length, _ = tf.unstack(tf.shape(embedded_sequence))
 
         # Recurrent network.
         cells = []
@@ -34,16 +37,22 @@ class ModelSimple(object):
                 cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=dropout)
             cells.append(cell)
         network = tf.nn.rnn_cell.MultiRNNCell(cells)
-        batch_size = tf.shape(input_text)[0]
         type = embedded_sequence.dtype
+
         sequence_output, _ = tf.nn.dynamic_rnn(network, embedded_sequence, dtype=tf.float32,
                                                sequence_length=sequence_length,
                                                initial_state=network.zero_state(batch_size, type))
+        # get last output of the dynamic_rnn
+        sequence_output = tf.reshape(sequence_output, [batch_size * max_length, num_hidden])
+        indexes = tf.range(batch_size) * max_length + (sequence_length - 1)
+        output = tf.gather(sequence_output, indexes)
 
-        output = self.model_sequence_output(sequence_output, sequence_length)
+        # full connected layer
+        output = tf.nn.dropout(output, dropout)
+        logits = layers.fully_connected(output, num_output_classes, activation_fn=None)
 
-        logits, prediction = self.model_full_connected_logits_prediction(output, num_hidden,
-                                                                         num_output_classes)
+        prediction = tf.nn.softmax(logits)
+
         return {
             'logits': logits,
             'prediction': prediction,
@@ -52,58 +61,32 @@ class ModelSimple(object):
     def model_embedded_sequence(self, embeddings, input_text):
         """
         Given the embeddings and the input text returns the embedded sequence and
-        the sequence lenght
+        the sequence length. The input_text is truncated to the max length of the sequence, so
+        the output embedded_sequence wont have the same shape as input_text or even a constant shape
         :param embeddings:
         :param input_text:
-        :return: (embedded_sequence, sequence_lenghth)
+        :return: (embedded_sequence, sequence_length)
         """
+        # calculate max length of the input_text
+        mask = tf.greater_equal(input_text, 0)  # true for words false for padding
+        sequence_length = tf.reduce_sum(tf.cast(mask, tf.int32), 1)
+
+        # truncate the input text to max length
+        max_sequence_length = tf.reduce_max(sequence_length)
+        input_text_length = tf.shape(input_text)[1]
+        empty_padding_lenght = input_text_length - max_sequence_length
+        input_text, _ = tf.split(input_text, [max_sequence_length, empty_padding_lenght], axis=1)
+
+        # create the embeddings
+
         # first vector is a zeros vector used for padding
         embeddings_dimension = len(embeddings[0])
         embeddings = [[0.0] * embeddings_dimension] + embeddings
         embeddings = tf.constant(embeddings, name='embeddings', dtype=tf.float32)
         # this means we need to add 1 to the input_text
         input_text = tf.add(input_text, 1)
-        # mask to know where there is a word and where padding
-        mask = tf.greater(input_text, 0)  # true for words false for padding
-        # length of the sequences without padding
-        sequence_length = tf.reduce_sum(tf.cast(mask, tf.int32), 1)
         embedded_sequence = tf.nn.embedding_lookup(embeddings, input_text)
         return embedded_sequence, sequence_length
-
-    def model_sequence_output(self, sequence_output, sequence_length):
-        """
-        Given the sequence output and the sequence length it returns the output of the sequence
-        based on the lengths
-        :param sequence_output:
-        :param sequence_length:
-        :return: The sequence output
-        """
-        # get the last relevant output of the sequence
-        batch_size = tf.shape(sequence_output)[0]
-        max_length = int(sequence_output.get_shape()[1])
-        output_size = int(sequence_output.get_shape()[2])
-        index = tf.range(0, batch_size) * max_length + (sequence_length - 1)
-        flat = tf.reshape(sequence_output, [-1, output_size])
-        output = tf.gather(flat, index)
-        return output
-
-    def model_full_connected_logits_prediction(self, output, num_hidden, num_output_classes):
-        """
-        Given an output it applies a batch normalization and a full connected layer to create the
-        logits and the predictions
-        :param output:
-        :param num_hidden:
-        :param num_output_classes:
-        :return: (logits, prediction)
-        """
-        # apply batch normalization to speed up training time
-        output = slim.batch_norm(output, scope='output_batch_norm')
-        # add a full connected layer
-        weight = tf.truncated_normal([num_hidden, num_output_classes], stddev=0.01)
-        bias = tf.constant(0.1, shape=[num_output_classes])
-        logits = tf.matmul(output, weight) + bias
-        prediction = tf.nn.softmax(logits)
-        return logits, prediction
 
     def model_arg_scope(self, batch_norm_decay=0.9997, batch_norm_epsilon=0.001):
         with slim.arg_scope([slim.batch_norm],
@@ -165,3 +148,9 @@ class ModelSimple(object):
         optimizer = optimizer.apply_gradients(zip(gradients, variables),
                                               global_step=global_step)
         return optimizer, learning_rate
+
+
+if __name__ == '__main__':
+    trainer = TextClassificationTrainer(dataset=TextClassificationDataset(type='train'),
+                                        text_classification_model=ModelSimple())
+    trainer.train()
