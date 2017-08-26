@@ -16,11 +16,11 @@ class TextClassificationTrainer(trainer.Trainer):
     more details.
     """
 
-    def __init__(self, dataset, text_classification_model, epochs=TC_EPOCHS):
+    def __init__(self, dataset, text_classification_model, epochs=TC_EPOCHS, logdir=DIR_TC_LOGDIR):
         self.dataset = dataset
         self.text_classification_model = text_classification_model
         max_steps = epochs * dataset.get_size()
-        super(TextClassificationTrainer, self).__init__(DIR_TC_LOGDIR, max_steps=max_steps)
+        super(TextClassificationTrainer, self).__init__(logdir, max_steps=max_steps)
 
     def _load_embeddings(self, vocabulary_size, embeddings_size):
         embeddings = []
@@ -78,9 +78,3 @@ class TextClassificationTrainer(trainer.Trainer):
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()
-
-
-if __name__ == '__main__':
-    # start the training
-    trainer = TextClassificationTrainer(dataset=TC_DATASET, text_classification_model=TC_MODEL)
-    trainer.train()
