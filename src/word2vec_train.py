@@ -256,37 +256,50 @@ class Word2VecTrainer(trainer.Trainer):
 
     def train_step(self, session, graph_data):
         labels, words = self.dataset.read()
-        lr, _, loss_val, step = session.run([self.learning_rate, self.optimizer, self.loss,
-                                             self.global_step],
-                                            feed_dict={
-                                                self.input_label: labels,
-                                                self.output_word: words,
-                                            })
         if self.is_chief:
+            lr, _, loss, step, embeddings = session.run([self.learning_rate, self.optimizer,
+                                                         self.loss, self.global_step,
+                                                         self.normalized_embeddings],
+                                                        feed_dict={
+                                                            self.input_label: labels,
+                                                            self.output_word: words,
+                                                        })
             if step % 100000 == 0:
                 elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
                 m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
-                print(m.format(step, loss_val, lr, elapsed_time))
+                print(m.format(step, loss, lr, elapsed_time))
                 current_time = time.time()
                 embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
                 embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
                 if not os.path.exists(embeddings_filepath):
-                    self.save_embeddings(session)
+                    self.save_embeddings(embeddings)
                 else:
                     embeddings_file_timestamp = os.path.getmtime(embeddings_filepath)
                     # save the embeddings every 30 minutes
                     if current_time - embeddings_file_timestamp > 30 * 60:
-                        self.save_embeddings(session)
+                        self.save_embeddings(embeddings)
+        else:
+            session.run([self.optimizer],
+                        feed_dict={self.input_label: labels, self.output_word: words})
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()
 
     def end(self, session):
-        self.save_embeddings(session)
+        if self.is_chief:
+            try:
+                normalized_embeddings = session.run([self.normalized_embeddings])[0]
+            except:
+                labels, words = self.dataset.read()
+                normalized_embeddings = session.run([self.normalized_embeddings],
+                                                    feed_dict={
+                                                        self.input_label: labels,
+                                                        self.output_word: words,
+                                                    })[0]
+            self.save_embeddings(normalized_embeddings)
 
-    def save_embeddings(self, session):
+    def save_embeddings(self, normalized_embeddings):
         print('Saving embeddings in text format...')
-        normalized_embeddings = session.run([self.normalized_embeddings])[0]
         embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
         embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
         with open(embeddings_filepath, 'wb') as file:
