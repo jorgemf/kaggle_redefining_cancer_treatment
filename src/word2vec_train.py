@@ -268,7 +268,7 @@ class Word2VecTrainer(trainer.Trainer):
             if step % 100000 == 0:
                 elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
                 m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
-                logging.info(m, step, loss, lr, elapsed_time)
+                print(m.format(step, loss, lr, elapsed_time))
                 current_time = time.time()
                 embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
                 embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
@@ -300,7 +300,7 @@ class Word2VecTrainer(trainer.Trainer):
             self.save_embeddings(normalized_embeddings)
 
     def save_embeddings(self, normalized_embeddings):
-        logging.info('Saving embeddings in text format...')
+        print('Saving embeddings in text format...')
         embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
         embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
         with open(embeddings_filepath, 'wb') as file:
