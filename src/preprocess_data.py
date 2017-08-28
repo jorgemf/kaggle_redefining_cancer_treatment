@@ -476,10 +476,13 @@ def encode_number(number):
 
 
 if __name__ == '__main__':
+    # TODO ignore empty documents
     if not os.path.exists(DIR_GENERATED_DATA):
         os.makedirs(DIR_GENERATED_DATA)
     if not os.path.exists(DIR_DATA_WORD2VEC):
         os.makedirs(DIR_DATA_WORD2VEC)
+    if not os.path.exists(DIR_DATA_DOC2VEC):
+        os.makedirs(DIR_DATA_DOC2VEC)
     if not os.path.exists(DIR_DATA_TEXT_CLASSIFICATION):
         os.makedirs(DIR_DATA_TEXT_CLASSIFICATION)
     if not os.path.exists(DIR_WIKIPEDIA_GENES):

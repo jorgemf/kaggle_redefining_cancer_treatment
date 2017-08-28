@@ -95,14 +95,14 @@ def remove_random_sentences(dataset, ratio_to_remove=TD_DATA_SENTENCE_REMOVE_PER
     return dataset
 
 
-def save_text_classification_dataset(filename, dataset):
+def save_text_classification_dataset(filename, dataset, dir=DIR_DATA_TEXT_CLASSIFICATION):
     """
     Saves the dataset. The sentences are stored in one single line, so they can processed better
     when they are read for training or test
     :param str filename: filename where to store the dataset
     :param List[DataSample] dataset: the dataset of DataSample
     """
-    with open(os.path.join(DIR_DATA_TEXT_CLASSIFICATION, filename), 'wb') as file:
+    with open(os.path.join(dir, filename), 'wb') as file:
         for data in dataset:
             file.write('{} '.format(data.real_class))
             for sentence in data.text:
