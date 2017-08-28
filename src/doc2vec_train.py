@@ -81,9 +81,7 @@ class Doc2VecTrainer(trainer.Trainer):
         max_steps = epochs * dataset.get_size()
         super(Doc2VecTrainer, self).__init__(DIR_D2V_LOGDIR, max_steps=max_steps,
                                              monitored_training_session_config=config,
-                                             log_step_count_steps=1000,
-                                             save_checkpoint_secs=10000,
-                                             save_summaries_steps=1000)
+                                             log_step_count_steps=1000, save_summaries_steps=1000)
 
     def model(self,
               batch_size=D2V_BATCH_SIZE,
