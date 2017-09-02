@@ -156,8 +156,10 @@ class Doc2VecTrainer(trainer.Trainer):
         projector.visualize_embeddings(summary_writer, config)
 
         # normalize the embeddings to save them
-        norm = tf.sqrt(tf.reduce_sum(tf.square(self.word_embeddings), 1, keep_dims=True))
-        self.normalized_embeddings = self.word_embeddings / norm
+        norm_word = tf.sqrt(tf.reduce_sum(tf.square(self.word_embeddings), 1, keep_dims=True))
+        self.normalized_word_embeddings = self.word_embeddings / norm_word
+        norm_doc = tf.sqrt(tf.reduce_sum(tf.square(self.doc_embeddings), 1, keep_dims=True))
+        self.normalized_doc_embeddings = self.doc_embeddings / norm_doc
 
         return None
 
@@ -167,28 +169,28 @@ class Doc2VecTrainer(trainer.Trainer):
     def train_step(self, session, graph_data):
         words, doc, label = self.dataset.read()
         if self.is_chief:
-            lr, _, loss, step, embeddings = session.run([self.learning_rate, self.optimizer,
-                                                         self.loss, self.global_step,
-                                                         self.normalized_embeddings],
-                                                        feed_dict={
-                                                            self.input_words: words,
-                                                            self.input_doc: doc,
-                                                            self.output_label: label,
-                                                        })
+            lr, _, loss, step, embeddings_words, embeddings_docs = \
+                session.run([self.learning_rate, self.optimizer, self.loss, self.global_step,
+                             self.normalized_word_embeddings, self.normalized_doc_embeddings],
+                            feed_dict={
+                                self.input_words: words,
+                                self.input_doc: doc,
+                                self.output_label: label,
+                            })
             if step % 10000 == 0:
                 elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
                 m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
                 print(m.format(step, loss, lr, elapsed_time))
                 current_time = time.time()
-                embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
+                embeddings_file = 'word_embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
                 embeddings_filepath = os.path.join(DIR_DATA_DOC2VEC, embeddings_file)
                 if not os.path.exists(embeddings_filepath):
-                    self.save_embeddings(embeddings)
+                    self.save_embeddings(embeddings_words, embeddings_docs)
                 else:
                     embeddings_file_timestamp = os.path.getmtime(embeddings_filepath)
                     # save the embeddings every 30 minutes
                     if current_time - embeddings_file_timestamp > 30 * 60:
-                        self.save_embeddings(embeddings)
+                        self.save_embeddings(embeddings_words, embeddings_docs)
         else:
             session.run([self.optimizer],
                         feed_dict={
@@ -203,27 +205,30 @@ class Doc2VecTrainer(trainer.Trainer):
     def end(self, session):
         if self.is_chief:
             try:
-                normalized_embeddings = session.run([self.normalized_embeddings])[0]
+                embeddings_words, embeddings_docs = \
+                    session.run([self.normalized_word_embeddings, self.normalized_doc_embeddings])
             except:
                 words, doc, label = self.dataset.read()
-                normalized_embeddings = session.run([self.normalized_embeddings],
-                                                    feed_dict={
-                                                        self.input_words: words,
-                                                        self.input_doc: doc,
-                                                        self.output_label: label,
-                                                    })[0]
-            self.save_embeddings(normalized_embeddings)
+                embeddings_words, embeddings_docs = \
+                    session.run([self.normalized_word_embeddings, self.normalized_doc_embeddings],
+                                feed_dict={
+                                    self.input_words: words,
+                                    self.input_doc: doc,
+                                    self.output_label: label,
+                                })
+            self.save_embeddings(embeddings_words, embeddings_docs)
 
-    def save_embeddings(self, normalized_embeddings):
+    def save_embeddings(self, word_embeddings, doc_embeddings):
         print('Saving embeddings in text format...')
-        embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
-        embeddings_filepath = os.path.join(DIR_DATA_DOC2VEC, embeddings_file)
-        with open(embeddings_filepath, 'wb') as file:
-            writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            writer.writerows(normalized_embeddings)
-        # copy the embeddings file to the log dir so we can download it from tensorport
-        if os.path.exists(embeddings_filepath):
-            shutil.copy(embeddings_filepath, self.log_dir)
+        for prefix, embeddings in zip(['word', 'doc'], [word_embeddings, doc_embeddings]):
+            embeddings_file = '{}_embeddings_{}_{}'.format(prefix, VOCABULARY_SIZE, EMBEDDINGS_SIZE)
+            embeddings_filepath = os.path.join(DIR_DATA_DOC2VEC, embeddings_file)
+            with open(embeddings_filepath, 'wb') as f:
+                writer = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                writer.writerows(embeddings)
+            # copy the embeddings file to the log dir so we can download it from tensorport
+            if os.path.exists(embeddings_filepath):
+                shutil.copy(embeddings_filepath, self.log_dir)
 
 
 if __name__ == '__main__':

@@ -13,6 +13,7 @@ DIR_DATA_TEXT_CLASSIFICATION = os.path.join(DIR_GENERATED_DATA, 'text_classifica
 # log dirs routes are automatically handle in the trainer
 DIR_W2V_LOGDIR = os.path.join('.', 'model', 'train', 'word2vec')
 DIR_D2V_LOGDIR = os.path.join('.', 'model', 'train', 'doc2vec')
+DIR_D2V_DOC_LOGDIR = os.path.join('.', 'model', 'train', 'doc2vec_doc')
 DIR_TC_LOGDIR = os.path.join('.', 'model', 'train', 'text_classification')
 
 # pre process data
@@ -50,6 +51,12 @@ D2V_NEGATIVE_NUM_SAMPLES = 64  # number of negative examples to sample for train
 D2V_LEARNING_RATE_INITIAL = 0.01  # initial learning rate for gradient descent
 D2V_LEARNING_RATE_DECAY = 0.9  # decay of learning rate
 D2V_LEARNING_RATE_DECAY_STEPS = 100000  # steps to decay the learning rate
+
+D2V_DOC_EPOCHS = 10  # iterations over the whole dataset
+D2V_DOC_BATCH_SIZE = 256  # batch size for the training
+D2V_DOC_LEARNING_RATE_INITIAL = 0.01  # initial learning rate for gradient descent
+D2V_DOC_LEARNING_RATE_DECAY = 0.9  # decay of learning rate
+D2V_DOC_LEARNING_RATE_DECAY_STEPS = 1000  # steps to decay the learning rate
 
 # text classification
 
