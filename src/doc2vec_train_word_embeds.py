@@ -1,18 +1,14 @@
 import tensorflow as tf
-import math
-import numpy as np
-import random
 import csv
 import time
 from datetime import timedelta
 import shutil
-import logging
 from tensorflow.python.training import training_util
 from tensorflow.contrib.tensorboard.plugins import projector
 from tensorflow.contrib import layers
-from src import trainer
-from src.word2vec_train import generate_batch, data_generator_buffered
-from src.configuration import *
+import trainer
+from word2vec_train import generate_batch, data_generator_buffered
+from configuration import *
 
 
 class Doc2VecDataset(object):
@@ -234,5 +230,10 @@ class Doc2VecTrainer(trainer.Trainer):
 
 
 if __name__ == '__main__':
+    # redirect outputs to files
+    import sys
+    from tensorport import get_logs_path
+    sys.stdout = open(get_logs_path('/tmp/log/stdout.txt'), 'w')
+    sys.stderr = open(get_logs_path('/tmp/log/stderr.txt'), 'w')
     # start the training
     Doc2VecTrainer(dataset=Doc2VecDataset()).train()
