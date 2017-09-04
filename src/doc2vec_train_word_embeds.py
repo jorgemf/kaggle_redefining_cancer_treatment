@@ -233,7 +233,8 @@ if __name__ == '__main__':
     # redirect outputs to files
     import sys
     from tensorport import get_logs_path
-    sys.stdout = open(get_logs_path('/tmp/log/stdout.txt'), 'w')
-    sys.stderr = open(get_logs_path('/tmp/log/stderr.txt'), 'w')
+
+    sys.stdout = open(os.path.join(get_logs_path('/tmp/log/'), 'stdout.txt'), 'w')
+    sys.stderr = open(os.path.join(get_logs_path('/tmp/log/'), 'stderr.txt'), 'w')
     # start the training
     Doc2VecTrainer(dataset=Doc2VecDataset()).train()
