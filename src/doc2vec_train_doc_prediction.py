@@ -4,9 +4,10 @@ import time
 from datetime import timedelta
 from tensorflow.python.training import training_util
 from tensorflow.contrib import layers
-from src import trainer
-from src.word2vec_train import generate_batch, data_generator_buffered
-from src.configuration import *
+import trainer
+from word2vec_train import generate_batch, data_generator_buffered
+from configuration import *
+import metrics
 
 
 class DocPredictionDataset(object):
@@ -113,6 +114,9 @@ class DocPredictionTrainer(trainer.Trainer):
         sgd = tf.train.GradientDescentOptimizer(self.learning_rate)
         self.optimizer = sgd.minimize(self.loss, global_step=self.global_step)
 
+        # metrics
+        self.metrics = metrics.single_label(self.prediction, targets)
+
         # saver to save the model
         self.saver = tf.train.Saver()
         # check a nan value in the loss
@@ -125,20 +129,24 @@ class DocPredictionTrainer(trainer.Trainer):
 
     def train_step(self, session, graph_data):
         embed, label = self.dataset.read()
-        lr, _, loss, step = \
-            session.run([self.learning_rate, self.optimizer, self.loss, self.global_step],
+        lr, _, loss, step, metrics = \
+            session.run([self.learning_rate, self.optimizer, self.loss,
+                         self.global_step, self.metrics],
                         feed_dict={
                             self.input_vectors: embed,
                             self.output_label: label,
                         })
-        if self.is_chief:
-            if step % 1000 == 0:
-                elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
-                m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
-                print(m.format(step, loss, lr, elapsed_time))
+        if self.is_chief and time.time() > self.print_timestamp + 5 * 60:
+            self.print_timestamp = time.time()
+            elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
+            m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}  ' \
+                'precision: {}  recall: {}  accuracy: {}'
+            print(m.format(step, loss, lr, elapsed_time,
+                           metrics['precision'], metrics['recall'], metrics['accuracy']))
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()
+        self.print_timestamp = time.time()
 
 
 if __name__ == '__main__':

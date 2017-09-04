@@ -263,7 +263,8 @@ class Word2VecTrainer(trainer.Trainer):
                                                             self.input_label: labels,
                                                             self.output_word: words,
                                                         })
-            if step % 10000 == 0:
+            if time.time() > self.print_timestamp + 5 * 60:
+                self.print_timestamp = time.time()
                 elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
                 m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
                 print(m.format(step, loss, lr, elapsed_time))
@@ -283,6 +284,7 @@ class Word2VecTrainer(trainer.Trainer):
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()
+        self.print_timestamp = time.time()
 
     def end(self, session):
         if self.is_chief:

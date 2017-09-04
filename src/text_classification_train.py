@@ -7,7 +7,7 @@ import trainer
 from tensorflow.python.training import training_util
 from tensorflow.contrib import slim
 from configuration import *
-from dataset_filelines import DatasetFilelines
+import metrics
 
 
 class TextClassificationTrainer(trainer.Trainer):
@@ -58,6 +58,9 @@ class TextClassificationTrainer(trainer.Trainer):
         if self.learning_rate is not None:
             tf.summary.scalar('learning_rate', self.learning_rate)
 
+        # metrics
+        self.metrics = metrics.single_label(outputs['prediction'], tf.squeeze(targets))
+
         # saver to save the model
         self.saver = tf.train.Saver()
         # check a nan value in the loss
@@ -69,12 +72,17 @@ class TextClassificationTrainer(trainer.Trainer):
         return self.model()
 
     def train_step(self, session, graph_data):
-        lr, _, loss_val, step = session.run([self.learning_rate, self.optimizer,
-                                             self.loss, self.global_step])
-        if self.is_chief and step % 1 == 0:
+        lr, _, loss, step, metrics = \
+            session.run([self.learning_rate, self.optimizer, self.loss, self.global_step,
+                         self.metrics])
+        if self.is_chief and time.time() > self.print_timestamp + 5 * 60:
+            self.print_timestamp = time.time()
             elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
-            m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
-            print(m.format(step, loss_val, lr, elapsed_time))
+            m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}  ' \
+                'precision: {}  recall: {}  accuracy: {}'
+            print(m.format(step, loss, lr, elapsed_time,
+                           metrics['precision'], metrics['recall'], metrics['accuracy']))
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()
+        self.print_timestamp = time.time()
