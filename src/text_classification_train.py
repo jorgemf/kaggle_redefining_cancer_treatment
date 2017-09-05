@@ -1,5 +1,4 @@
 import tensorflow as tf
-import numpy as np
 import csv
 import time
 from datetime import timedelta
@@ -16,10 +15,12 @@ class TextClassificationTrainer(trainer.Trainer):
     more details.
     """
 
-    def __init__(self, dataset, text_classification_model, epochs=TC_EPOCHS, logdir=DIR_TC_LOGDIR):
+    def __init__(self, dataset, text_classification_model, epochs=TC_EPOCHS,
+                 batch_size=TC_BATCH_SIZE, logdir=DIR_TC_LOGDIR):
         self.dataset = dataset
         self.text_classification_model = text_classification_model
-        max_steps = epochs * dataset.get_size()
+        self.batch_size = batch_size
+        max_steps = epochs * dataset.get_size() /batch_size
         super(TextClassificationTrainer, self).__init__(logdir, max_steps=max_steps)
 
     def _load_embeddings(self, vocabulary_size, embeddings_size):
@@ -31,7 +32,7 @@ class TextClassificationTrainer(trainer.Trainer):
                 embeddings.append([float(r) for r in row])
         return embeddings
 
-    def model(self, batch_size=TC_BATCH_SIZE, vocabulary_size=VOCABULARY_SIZE,
+    def model(self, vocabulary_size=VOCABULARY_SIZE,
               embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
         # embeddings
         embeddings = self._load_embeddings(vocabulary_size, embeddings_size)
@@ -40,7 +41,7 @@ class TextClassificationTrainer(trainer.Trainer):
         self.global_step = training_util.get_or_create_global_step()
 
         # inputs
-        self.inputs_text, self.expected_labels = self.dataset.read(batch_size, shuffle=True)
+        self.inputs_text, self.expected_labels = self.dataset.read(self.batch_size, shuffle=True)
 
         # model
         with slim.arg_scope(self.text_classification_model.model_arg_scope()):

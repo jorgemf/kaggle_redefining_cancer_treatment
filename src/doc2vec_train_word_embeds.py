@@ -70,17 +70,17 @@ class Doc2VecTrainer(trainer.Trainer):
     more details.
     """
 
-    def __init__(self, dataset, epochs=D2V_EPOCHS):
+    def __init__(self, dataset, epochs=D2V_EPOCHS, batch_size=D2V_BATCH_SIZE):
         self.dataset = dataset
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        max_steps = epochs * dataset.get_size()
+        self.batch_size = batch_size
+        max_steps = epochs * dataset.get_size() / batch_size
         super(Doc2VecTrainer, self).__init__(DIR_D2V_LOGDIR, max_steps=max_steps,
                                              monitored_training_session_config=config,
                                              log_step_count_steps=1000, save_summaries_steps=1000)
 
     def model(self,
-              batch_size=D2V_BATCH_SIZE,
               vocabulary_size=VOCABULARY_SIZE,
               embedding_size=EMBEDDINGS_SIZE,
               docs_size=D2_TRAIN_DOCS_SIZE,
@@ -92,11 +92,11 @@ class Doc2VecTrainer(trainer.Trainer):
         self.global_step = training_util.get_or_create_global_step()
 
         # inputs/outputs
-        self.input_words = tf.placeholder(tf.int32, shape=[batch_size, context_size],
+        self.input_words = tf.placeholder(tf.int32, shape=[self.batch_size, context_size],
                                           name='input_context')
-        self.input_doc = tf.placeholder(tf.int32, shape=[batch_size], name='input_doc')
-        self.output_label = tf.placeholder(tf.int32, shape=[batch_size], name='output_label')
-        output_label = tf.reshape(self.output_label, [batch_size, 1])
+        self.input_doc = tf.placeholder(tf.int32, shape=[self.batch_size], name='input_doc')
+        self.output_label = tf.placeholder(tf.int32, shape=[self.batch_size], name='output_label')
+        output_label = tf.reshape(self.output_label, [self.batch_size, 1])
 
         # embeddings
         self.word_embeddings = tf.get_variable(shape=[vocabulary_size, embedding_size],

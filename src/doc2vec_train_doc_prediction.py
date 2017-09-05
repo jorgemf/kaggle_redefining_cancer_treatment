@@ -69,18 +69,18 @@ class DocPredictionTrainer(trainer.Trainer):
     more details.
     """
 
-    def __init__(self, dataset, epochs=D2V_DOC_EPOCHS):
+    def __init__(self, dataset, epochs=D2V_DOC_EPOCHS, batch_size=D2V_DOC_BATCH_SIZE):
         self.dataset = dataset
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        max_steps = epochs * dataset.get_size()
+        max_steps = epochs * dataset.get_size() / batch_size
+        self.batch_size = batch_size
         super(DocPredictionTrainer, self).__init__(DIR_D2V_DOC_LOGDIR, max_steps=max_steps,
                                                    monitored_training_session_config=config,
                                                    log_step_count_steps=1000,
                                                    save_summaries_steps=1000)
 
     def model(self,
-              batch_size=D2V_DOC_BATCH_SIZE,
               embedding_size=EMBEDDINGS_SIZE,
               output_classes=9,
               learning_rate_initial=D2V_DOC_LEARNING_RATE_INITIAL,
@@ -89,10 +89,10 @@ class DocPredictionTrainer(trainer.Trainer):
         self.global_step = training_util.get_or_create_global_step()
 
         # inputs/outputs
-        self.input_vectors = tf.placeholder(tf.float32, shape=[batch_size, embedding_size],
+        self.input_vectors = tf.placeholder(tf.float32, shape=[self.batch_size, embedding_size],
                                             name='input_vectors')
-        self.output_label = tf.placeholder(tf.int32, shape=[batch_size], name='output_label')
-        output_label = tf.reshape(self.output_label, [batch_size, 1])
+        self.output_label = tf.placeholder(tf.int32, shape=[self.batch_size], name='output_label')
+        output_label = tf.reshape(self.output_label, [self.batch_size, 1])
         targets = tf.one_hot(output_label, axis=-1, depth=output_classes, on_value=1.0,
                              off_value=0.0)
         targets = tf.squeeze(targets)
