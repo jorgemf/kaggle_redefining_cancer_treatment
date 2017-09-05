@@ -17,3 +17,10 @@ if __name__ == '__main__':
     print('Saving final dataset...')
     save_text_classification_dataset('train_set', train_set, dir=DIR_DATA_DOC2VEC)
     save_text_classification_dataset('test_set', test_set, dir=DIR_DATA_DOC2VEC)
+    print('Creating tsv file for tensorboard...')
+    with open(os.path.join(DIR_DATA_DOC2VEC, 'train_set_classes.tsv'), 'wb') as f:
+        f.write('class\tid\n')
+        pos = 0
+        for sample in train_set:
+            f.write('{}\t{}\n'.format(sample.real_class, pos))
+            pos += 1

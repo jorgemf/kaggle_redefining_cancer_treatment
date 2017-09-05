@@ -139,8 +139,9 @@ class Doc2VecTrainer(trainer.Trainer):
         # check a nan value in the loss
         self.loss = tf.check_numerics(self.loss, 'loss is nan')
 
-        # embeddings
+        # embeddings in tensorboard
         config = projector.ProjectorConfig()
+        # words
         embedding = config.embeddings.add()
         embedding.tensor_name = self.word_embeddings.name
         filename_tsv = '{}_{}.tsv'.format('word2vec_dataset', vocabulary_size)
@@ -148,14 +149,17 @@ class Doc2VecTrainer(trainer.Trainer):
             os.makedirs(self.log_dir)
         shutil.copy(os.path.join(DIR_DATA_WORD2VEC, filename_tsv), self.log_dir)
         embedding.metadata_path = filename_tsv
+        # docs
+        embedding = config.embeddings.add()
+        embedding.tensor_name = self.doc_embeddings.name
+        filename_tsv = 'train_set_classes.tsv'
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+        shutil.copy(os.path.join(DIR_DATA_DOC2VEC, filename_tsv), self.log_dir)
+        embedding.metadata_path = filename_tsv
+
         summary_writer = tf.summary.FileWriter(self.log_dir)
         projector.visualize_embeddings(summary_writer, config)
-
-        # normalize the embeddings to save them
-        norm_word = tf.sqrt(tf.reduce_sum(tf.square(self.word_embeddings), 1, keep_dims=True))
-        self.normalized_word_embeddings = self.word_embeddings / norm_word
-        norm_doc = tf.sqrt(tf.reduce_sum(tf.square(self.doc_embeddings), 1, keep_dims=True))
-        self.normalized_doc_embeddings = self.doc_embeddings / norm_doc
 
         return None
 
@@ -167,7 +171,7 @@ class Doc2VecTrainer(trainer.Trainer):
         if self.is_chief:
             lr, _, loss, step, embeddings_words, embeddings_docs = \
                 session.run([self.learning_rate, self.optimizer, self.loss, self.global_step,
-                             self.normalized_word_embeddings, self.normalized_doc_embeddings],
+                             self.word_embeddings, self.doc_embeddings],
                             feed_dict={
                                 self.input_words: words,
                                 self.input_doc: doc,
@@ -204,11 +208,11 @@ class Doc2VecTrainer(trainer.Trainer):
         if self.is_chief:
             try:
                 embeddings_words, embeddings_docs = \
-                    session.run([self.normalized_word_embeddings, self.normalized_doc_embeddings])
+                    session.run([self.word_embeddings, self.doc_embeddings])
             except:
                 words, doc, label = self.dataset.read()
                 embeddings_words, embeddings_docs = \
-                    session.run([self.normalized_word_embeddings, self.normalized_doc_embeddings],
+                    session.run([self.word_embeddings, self.doc_embeddings],
                                 feed_dict={
                                     self.input_words: words,
                                     self.input_doc: doc,
