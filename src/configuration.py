@@ -52,7 +52,7 @@ D2V_LEARNING_RATE_INITIAL = 0.01  # initial learning rate for gradient descent
 D2V_LEARNING_RATE_DECAY = 0.9  # decay of learning rate
 D2V_LEARNING_RATE_DECAY_STEPS = 100000  # steps to decay the learning rate
 
-D2V_DOC_EPOCHS = 10  # iterations over the whole dataset
+D2V_DOC_EPOCHS = 20  # iterations over the whole dataset
 D2V_DOC_BATCH_SIZE = 256  # batch size for the training
 D2V_DOC_LEARNING_RATE_INITIAL = 0.01  # initial learning rate for gradient descent
 D2V_DOC_LEARNING_RATE_DECAY = 0.9  # decay of learning rate

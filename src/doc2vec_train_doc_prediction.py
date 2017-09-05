@@ -95,6 +95,7 @@ class DocPredictionTrainer(trainer.Trainer):
         output_label = tf.reshape(self.output_label, [batch_size, 1])
         targets = tf.one_hot(output_label, axis=-1, depth=output_classes, on_value=1.0,
                              off_value=0.0)
+        targets = tf.squeeze(targets)
 
         net = layers.fully_connected(self.input_vectors, embedding_size / 2, activation_fn=tf.tanh)
         logits = layers.fully_connected(net, output_classes, activation_fn=None)
