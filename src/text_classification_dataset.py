@@ -10,7 +10,7 @@ class TextClassificationDataset(DatasetFilelines):
     Helper class for the dataset. See dataset_filelines.DatasetFilelines for more details.
     """
 
-    def __init__(self, type='train', sentence_split=False):
+    def __init__(self, type='train', sentence_split=False, **kwargs):
         """
         :param str type: type of set, either 'train' or 'test'
         """
@@ -34,7 +34,7 @@ class TextClassificationDataset(DatasetFilelines):
                         break
 
         super(TextClassificationDataset, self).__init__(name=type, data_files=data_files,
-                                                        min_queue_examples=TC_BATCH_SIZE)
+                                                        min_queue_examples=TC_BATCH_SIZE, **kwargs)
 
     def py_func_parse_example(self, example_serialized):
         example_serialized = example_serialized.split()

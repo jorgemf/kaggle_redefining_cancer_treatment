@@ -8,6 +8,7 @@ from tensorflow.contrib import slim
 from tensorflow.python.training import training_util
 from tensorflow.python.training.monitored_session import SingularMonitoredSession
 from tensorflow.python.training.basic_session_run_hooks import StopAtStepHook
+from tensorflow.python.ops import variables as tf_variables
 from configuration import *
 import trainer
 import metrics
@@ -43,36 +44,45 @@ class TextClassificationTest(trainer.Trainer):
 
             logging.info('Creating SingularMonitoredSession...')
             hooks = [self, StopAtStepHook(num_steps=self.max_steps)]
-            with SingularMonitoredSession(hooks=hooks) as sess:
+            config = tf.ConfigProto()
+            config.gpu_options.allow_growth = True
+            with SingularMonitoredSession(hooks=hooks, config=config) as sess:
                 logging.info('Starting training...')
                 while not sess.should_stop():
                     self.train_step(sess, graph_data)
 
     def model(self, vocabulary_size=VOCABULARY_SIZE, embeddings_size=EMBEDDINGS_SIZE,
-              output_classes=9):
+              output_classes=9, use_metrics=True, use_loss=True):
         # global step
         self.global_step = training_util.get_or_create_global_step()
+        global_step_increase = tf.assign_add(self.global_step, 1)
 
         # embeddings
         embeddings = self._load_embeddings(vocabulary_size, embeddings_size)
 
         # inputs
-        self.inputs_text, self.expected_labels = self.dataset.read(self.batch_size)
+        self.inputs_text, self.expected_labels = self.dataset.read(self.batch_size, epochs=1)
 
         # model
-        with slim.arg_scope(self.text_classification_model.model_arg_scope()):
-            outputs = self.text_classification_model.model(self.inputs_text, output_classes,
-                                                           embeddings=embeddings)
-            self.prediction = outputs['prediction']
+        with tf.control_dependencies([global_step_increase]):
+            with slim.arg_scope(self.text_classification_model.model_arg_scope()):
+                outputs = self.text_classification_model.model(self.inputs_text, output_classes,
+                                                               embeddings=embeddings,
+                                                               training=False)
+                self.prediction = outputs['prediction']
 
-        self.saver = tf.train.Saver()
-        # loss
-        targets = self.text_classification_model.targets(self.expected_labels, output_classes)
-        self.loss = self.text_classification_model.loss(targets, outputs)
+        # restore only the trainable variables
+        self.saver = tf.train.Saver(var_list=tf_variables.trainable_variables())
 
-        # metrics
-        self.metrics = metrics.single_label(outputs['prediction'], tf.squeeze(targets),
-                                            moving_average=False)
+        if use_loss or use_metrics:
+            # loss
+            targets = self.text_classification_model.targets(self.expected_labels, output_classes)
+            self.loss = self.text_classification_model.loss(targets, outputs)
+
+        if use_metrics:
+            # metrics
+            self.metrics = metrics.single_label(outputs['prediction'], tf.squeeze(targets),
+                                                moving_average=False)
 
         return None
 
@@ -89,14 +99,13 @@ class TextClassificationTest(trainer.Trainer):
         self.steps = 0
 
     def train_step(self, session, graph_data):
-        loss, self.m = session.run([self.loss, self.metrics])
-        self.steps += 1
+        step, loss, self.m = session.run([self.global_step, self.loss, self.metrics])
         self.accumulated_loss += loss
         self.print_timestamp = time.time()
         elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
-        m = 'samples: {} loss: {:0.4f} elapsed seconds: {} ' \
+        m = 'samples: {} loss: {:0.4f} elapsed (h:m:s): {} ' \
             'precision: {:0.3f} recall: {:0.3f} accuracy: {:0.3f}'
-        print(m.format(self.steps * self.batch_size, self.accumulated_loss / self.steps,
+        print(m.format(step * self.batch_size, self.accumulated_loss / step,
                        elapsed_time, self.m['precision'], self.m['recall'], self.m['accuracy']))
 
     def end(self, session):
@@ -119,33 +128,16 @@ class TextClassificationEvaluator(TextClassificationTest):
         super(TextClassificationEvaluator, self).__init__(dataset, text_classification_model, 1,
                                                           logdir)
 
-    def model(self, vocabulary_size=VOCABULARY_SIZE, embeddings_size=EMBEDDINGS_SIZE,
-              output_classes=9):
-        # global step
-        self.global_step = training_util.get_or_create_global_step()
-
-        # embeddings
-        embeddings = self._load_embeddings(vocabulary_size, embeddings_size)
-
-        # inputs
-        self.inputs_text, _ = self.dataset.read(self.batch_size)
-
-        # model
-        with slim.arg_scope(self.text_classification_model.model_arg_scope()):
-            outputs = self.text_classification_model.model(self.inputs_text, output_classes,
-                                                           embeddings=embeddings)
-        self.prediction = outputs['prediction']
-
-        self.saver = tf.train.Saver()
-
-        return None
+    def create_graph(self):
+        return self.model(use_metrics=False, use_loss=False)
 
     def train_step(self, session, graph_data):
-        predictions = session.run([self.prediction])[0][0]
-        print('{},{}'.format(self.steps, ','.join([str(x) for x in predictions])))
-        self.steps += 1
+        step, predictions = session.run([self.global_step, self.prediction])
+        print('{},{}'.format(step - 1, ','.join([str(x) for x in predictions[0]])))
 
     def after_create_session(self, session, coord):
         super(TextClassificationEvaluator, self).after_create_session(session, coord)
-        self.steps = 0
         print('ID,class1,class2,class3,class4,class5,class6,class7,class8,class9')
+
+    def end(self, session):
+        pass

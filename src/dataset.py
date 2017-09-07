@@ -35,16 +35,18 @@ class Dataset(object):
         if self.num_preprocess_threads < 1:
             raise ValueError('Please make num_preprocess_threads at least 1')
 
-    def read(self, batch_size, shuffle=False):
+    def read(self, batch_size, shuffle=False, epochs=None):
         """
         Reads the data and return a tuple of (inputs,outputs)
-        :param batch_size: the bactch size of the returned inputs/outputs
-        :param shuffle: whether to shuffle the data or not
+        :param int batch_size: the bactch size of the returned inputs/outputs
+        :param bool shuffle: whether to shuffle the data or not
+        :param int epochs: number of epochs to run the queue, by default runs indefinetly
         :return: a tuple of (inputs,outputs) with the batch size set
         """
         data_file_names = self.data_files_names()
 
-        filename_queue = tf.train.string_input_producer(data_file_names, shuffle=shuffle)
+        filename_queue = tf.train.string_input_producer(data_file_names, shuffle=shuffle,
+                                                        num_epochs=epochs)
 
         capacity_examples_queue = self.min_queue_examples + \
                                   (self.num_preprocess_threads + 2) * batch_size

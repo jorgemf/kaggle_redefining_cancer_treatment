@@ -112,4 +112,4 @@ class ModelHATT(ModelSimple):
 
 
 if __name__ == '__main__':
-    main(ModelHATT(), 'hatt')
+    main(ModelHATT(), 'hatt', sentence_split=True)

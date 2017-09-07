@@ -92,19 +92,28 @@ class TextClassificationTrainer(trainer.Trainer):
         self.print_timestamp = time.time()
 
 
-def main(model, name):
+def main(model, name, sentence_split=False):
+    """
+    Main method to execute the text_classification models
+    :param ModelSimple model: object model based on ModelSimple
+    :param str name: name of the model
+    :param bool sentence_split: whether to split the dataset in sentneces or not,
+    only used for hatt model
+    """
     if len(sys.argv) > 1 and sys.argv[1] == 'test':
-        dataset = TextClassificationDataset(type='train', sentence_split=True)
+        dataset = TextClassificationDataset(type='train', sentence_split=sentence_split)
         tester = TextClassificationTest(dataset=dataset, text_classification_model=model,
                                         logdir='{}_{}'.format(DIR_TC_LOGDIR, name))
         tester.run()
     elif len(sys.argv) > 1 and sys.argv[1] == 'eval':
-        dataset = TextClassificationDataset(type='test', sentence_split=True)
+        # use one reader and one thread to get the same order than in the file
+        dataset = TextClassificationDataset(type='test', sentence_split=sentence_split,
+                                            num_preprocess_threads=1, num_readers=1)
         evaluator = TextClassificationEvaluator(dataset=dataset, text_classification_model=model,
                                                 logdir='{}_{}'.format(DIR_TC_LOGDIR, name))
         evaluator.run()
     else:
-        dataset = TextClassificationDataset(type='train', sentence_split=True)
+        dataset = TextClassificationDataset(type='train', sentence_split=sentence_split)
         trainer = TextClassificationTrainer(dataset=dataset, text_classification_model=model,
                                             logdir='{}_{}'.format(DIR_TC_LOGDIR, name))
         trainer.run()
