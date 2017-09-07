@@ -1,9 +1,9 @@
+import sys
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
 from configuration import *
 from text_classification_model_simple import ModelSimple
-from text_classification_train import TextClassificationTrainer
-from text_classification_dataset import TextClassificationDataset
+from text_classification_train import main
 
 
 class ModelHATT(ModelSimple):
@@ -112,7 +112,4 @@ class ModelHATT(ModelSimple):
 
 
 if __name__ == '__main__':
-    dataset = TextClassificationDataset(type='train', sentence_split=True)
-    trainer = TextClassificationTrainer(dataset=dataset, text_classification_model=ModelHATT(),
-                                        logdir='{}_{}'.format(DIR_TC_LOGDIR, 'hatt'))
-    trainer.train()
+    main(ModelHATT(), 'hatt')

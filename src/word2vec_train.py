@@ -313,4 +313,4 @@ class Word2VecTrainer(trainer.Trainer):
 
 if __name__ == '__main__':
     # start the training
-    Word2VecTrainer(dataset=Word2VecDataset()).train()
+    Word2VecTrainer(dataset=Word2VecDataset()).run()

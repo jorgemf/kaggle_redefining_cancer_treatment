@@ -58,7 +58,7 @@ def get_task_spec():
     parser.add_argument('--task_index', dest='task_index', default=None)
     parser.add_argument('--ps_hosts', dest='ps_hosts', default=None)
     parser.add_argument('--worker_hosts', dest='worker_hosts', default=None)
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
     if args.job_name:
         return TaskSpec(job_name=args.job_name, index=args.task_index,
                         ps_hosts=args.ps_hosts, worker_hosts=args.worker_hosts)
@@ -148,7 +148,7 @@ class Trainer(session_run_hook.SessionRunHook):
         self.max_steps = max_steps
         logging.info('Log dir: {}', self.log_dir)
 
-    def train(self):
+    def run(self):
         """
         Starts the training
         """

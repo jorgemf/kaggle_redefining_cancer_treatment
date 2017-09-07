@@ -235,4 +235,4 @@ class Doc2VecTrainer(trainer.Trainer):
 
 if __name__ == '__main__':
     # start the training
-    Doc2VecTrainer(dataset=Doc2VecDataset()).train()
+    Doc2VecTrainer(dataset=Doc2VecDataset()).run()

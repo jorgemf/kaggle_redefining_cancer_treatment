@@ -152,4 +152,4 @@ class DocPredictionTrainer(trainer.Trainer):
 
 if __name__ == '__main__':
     # start the training
-    DocPredictionTrainer(dataset=DocPredictionDataset()).train()
+    DocPredictionTrainer(dataset=DocPredictionDataset()).run()

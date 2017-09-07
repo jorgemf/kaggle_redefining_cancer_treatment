@@ -2,8 +2,7 @@ import tensorflow as tf
 import tensorflow.contrib.layers as layers
 from configuration import *
 from text_classification_model_simple import ModelSimple
-from text_classification_train import TextClassificationTrainer
-from text_classification_dataset import TextClassificationDataset
+from text_classification_train import main
 
 
 class ModelSimpleBidirectional(ModelSimple):
@@ -48,7 +47,4 @@ class ModelSimpleBidirectional(ModelSimple):
 
 
 if __name__ == '__main__':
-    trainer = TextClassificationTrainer(dataset=TextClassificationDataset(type='train'),
-                                        text_classification_model=ModelSimpleBidirectional(),
-                                        logdir='{}_{}'.format(DIR_TC_LOGDIR, 'bidirectional'))
-    trainer.train()
+    main(ModelSimpleBidirectional(), 'bidirectional')

@@ -3,8 +3,7 @@ from tensorflow.contrib import slim
 from tensorflow.python.framework import ops
 import tensorflow.contrib.layers as layers
 from configuration import *
-from text_classification_train import TextClassificationTrainer
-from text_classification_dataset import TextClassificationDataset
+from text_classification_train import main
 
 
 class ModelSimple(object):
@@ -151,6 +150,4 @@ class ModelSimple(object):
 
 
 if __name__ == '__main__':
-    trainer = TextClassificationTrainer(dataset=TextClassificationDataset(type='train'),
-                                        text_classification_model=ModelSimple())
-    trainer.train()
+    main(ModelSimple(), 'simple')

@@ -2,11 +2,14 @@ import tensorflow as tf
 import csv
 import time
 from datetime import timedelta
-import trainer
+import sys
 from tensorflow.python.training import training_util
 from tensorflow.contrib import slim
 from configuration import *
+import trainer
 import metrics
+from text_classification_test import TextClassificationEvaluator, TextClassificationTest
+from text_classification_dataset import TextClassificationDataset
 
 
 class TextClassificationTrainer(trainer.Trainer):
@@ -20,7 +23,7 @@ class TextClassificationTrainer(trainer.Trainer):
         self.dataset = dataset
         self.text_classification_model = text_classification_model
         self.batch_size = batch_size
-        max_steps = epochs * dataset.get_size() /batch_size
+        max_steps = epochs * dataset.get_size() / batch_size
         super(TextClassificationTrainer, self).__init__(logdir, max_steps=max_steps)
 
     def _load_embeddings(self, vocabulary_size, embeddings_size):
@@ -32,8 +35,8 @@ class TextClassificationTrainer(trainer.Trainer):
                 embeddings.append([float(r) for r in row])
         return embeddings
 
-    def model(self, vocabulary_size=VOCABULARY_SIZE,
-              embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
+    def model(self, vocabulary_size=VOCABULARY_SIZE, embeddings_size=EMBEDDINGS_SIZE,
+              output_classes=9):
         # embeddings
         embeddings = self._load_embeddings(vocabulary_size, embeddings_size)
 
@@ -87,3 +90,21 @@ class TextClassificationTrainer(trainer.Trainer):
     def after_create_session(self, session, coord):
         self.init_time = time.time()
         self.print_timestamp = time.time()
+
+
+def main(model, name):
+    if len(sys.argv) > 1 and sys.argv[1] == 'test':
+        dataset = TextClassificationDataset(type='train', sentence_split=True)
+        tester = TextClassificationTest(dataset=dataset, text_classification_model=model,
+                                        logdir='{}_{}'.format(DIR_TC_LOGDIR, name))
+        tester.run()
+    elif len(sys.argv) > 1 and sys.argv[1] == 'eval':
+        dataset = TextClassificationDataset(type='test', sentence_split=True)
+        evaluator = TextClassificationEvaluator(dataset=dataset, text_classification_model=model,
+                                                logdir='{}_{}'.format(DIR_TC_LOGDIR, name))
+        evaluator.run()
+    else:
+        dataset = TextClassificationDataset(type='train', sentence_split=True)
+        trainer = TextClassificationTrainer(dataset=dataset, text_classification_model=model,
+                                            logdir='{}_{}'.format(DIR_TC_LOGDIR, name))
+        trainer.run()

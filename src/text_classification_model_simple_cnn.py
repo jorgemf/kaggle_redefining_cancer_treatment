@@ -2,8 +2,7 @@ import tensorflow as tf
 from tensorflow.contrib.layers.python.layers import layers
 from configuration import *
 from text_classification_model_simple import ModelSimple
-from text_classification_train import TextClassificationTrainer
-from text_classification_dataset import TextClassificationDataset
+from text_classification_train import main
 
 
 class ModelSimpleCNN(ModelSimple):
@@ -53,7 +52,4 @@ class ModelSimpleCNN(ModelSimple):
 
 
 if __name__ == '__main__':
-    trainer = TextClassificationTrainer(dataset=TextClassificationDataset(type='train'),
-                                        text_classification_model=ModelSimpleCNN(),
-                                        logdir='{}_{}'.format(DIR_TC_LOGDIR, 'cnn'))
-    trainer.train()
+    main(ModelSimpleCNN(), 'cnn')
