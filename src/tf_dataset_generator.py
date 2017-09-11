@@ -70,9 +70,14 @@ class TFDataSetGenerator(object):
         :return: The result of calling dataset.make_one_shot_iterator().get_next()
         """
         # TODO in TF 1.4 use: dataset = Dataset.from_generator(self.generator)
+        # FIXME repeat doesn't work with generators, so we can encapsulate the generator here
+        def _epochs():
+            for _ in range(num_epochs):
+                for item in self.generator():
+                    yield item
+        generator_state = _GeneratorState(_epochs)
         output_types = self.output_types
         output_shapes = self.output_shapes
-        generator_state = _GeneratorState(self.generator)
         output_shapes = nest.map_structure(
             lambda _: tensor_shape.TensorShape(None), output_types)
         flattened_types = nest.flatten(output_types)
@@ -121,7 +126,8 @@ class TFDataSetGenerator(object):
         ############################################################################################
 
         # set the number of epochs
-        dataset = dataset.repeat(num_epochs)
+        # FIXME repeat doesn't work with generators
+        # dataset = dataset.repeat(num_epochs)
 
         if task_spec and task_spec.num_workers > 1:
             # split the dataset in shards

@@ -44,10 +44,8 @@ class DocPredictionDataset(TFDataSetGenerator):
                                                    shuffle_size=2000)
 
     def _generator(self):
-        # TODO while repeat doesn't work on dataset do it here:
-        for _ in range(self.epochs):
-            for i in range(len(self.embeds)):
-                yield np.asarray(self.embeds[i], dtype=np.float32), np.int32(self.doc_labels[i])
+        for i in range(len(self.embeds)):
+            yield np.asarray(self.embeds[i], dtype=np.float32), np.int32(self.doc_labels[i])
 
 
 class DocPredictionTrainer(trainer.Trainer):
@@ -57,8 +55,6 @@ class DocPredictionTrainer(trainer.Trainer):
     """
 
     def __init__(self, dataset, epochs=D2V_DOC_EPOCHS, batch_size=D2V_DOC_BATCH_SIZE):
-        # TODO while repeat doesn't work on dataset do it in the dataset:
-        dataset.epochs = epochs
         self.dataset = dataset
         self.epochs = epochs
         self.batch_size = batch_size
@@ -125,7 +121,7 @@ class DocPredictionTrainer(trainer.Trainer):
         lr, _, loss, step, metrics = \
             session.run([self.learning_rate, self.optimizer, self.loss,
                          self.global_step, self.metrics])
-        if self.is_chief and time.time() > self.print_timestamp + 5 * 60*0:
+        if self.is_chief and time.time() > self.print_timestamp + 5 * 60:
             self.print_timestamp = time.time()
             elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
             m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}  ' \
