@@ -1,26 +1,24 @@
 import tensorflow as tf
-import random
 import time
 from datetime import timedelta
 from tensorflow.python.training import training_util
 from tensorflow.contrib import layers
 import trainer
-from word2vec_train import generate_batch, data_generator_buffered
+from tf_dataset_generator import TFDataSetGenerator
 from configuration import *
 import metrics
 
 
-class DocPredictionDataset(object):
+class DocPredictionDataset(TFDataSetGenerator):
     """
     Custom dataset. We use it to feed the session.run method directly.
     """
 
     def __init__(self, type='train',
-                 shuffle_data=True,
                  batch_size=D2V_DOC_BATCH_SIZE,
                  vocabulary_size=VOCABULARY_SIZE,
                  embedding_size=EMBEDDINGS_SIZE):
-        self._size = None
+        self.batch_size = batch_size
         docs_filename = '{}_set'.format(type)
         embeds_filename = 'doc_embeddings_{}_{}'.format(vocabulary_size, embedding_size)
         if type == 'test':
@@ -29,38 +27,24 @@ class DocPredictionDataset(object):
         self.docs_file = os.path.join(DIR_DATA_DOC2VEC, docs_filename)
         self.embeds_file = os.path.join(DIR_DATA_DOC2VEC, embeds_filename)
 
-        samples_generator = self._samples_generator()
-        samples_generator = data_generator_buffered(samples_generator, randomize=shuffle_data)
-        self.batch_generator = generate_batch(samples_generator, batch_size)
-
-    def _count_num_records(self):
-        size = 0
+        # pre load data in memory for the generator
         with open(self.docs_file) as f:
-            for _ in f:
-                size += 1
-        return size
+            self.doc_labels = [int(line.split()[0]) for line in f.readlines()]
+        with open(self.embeds_file) as f:
+            self.embeds = [l.split(',') for l in f.readlines()]
+            for i, line in enumerate(self.embeds):
+                self.embeds[i] = [float(e) for e in line]
 
-    def get_size(self):
-        if self._size is None:
-            self._size = self._count_num_records()
-        return self._size
+        output_types = (tf.float32, tf.int32)
+        super(DocPredictionDataset, self).__init__(name=type,
+                                                   generator=self._generator,
+                                                   output_types=output_types,
+                                                   min_queue_examples=1000,
+                                                   shuffle_size=5000)
 
     def _samples_generator(self):
-        with open(self.docs_file) as f:
-            doc_labels = [int(line.split()[0]) for line in f.readlines()]
-        with open(self.embeds_file) as f:
-            embeds = [l.split(',') for l in f.readlines()]
-            for i, line in enumerate(embeds):
-                embeds[i] = [float(e) for e in line]
-
-        while True:
-            r = list(range(self.get_size()))
-            random.shuffle(r)
-            for i in r:
-                yield embeds[i], doc_labels[i]
-
-    def read(self):
-        return self.batch_generator.next()
+        for i in range(len(self.embeds)):
+            yield self.embeds[i], self.doc_labels[i]
 
 
 class DocPredictionTrainer(trainer.Trainer):
@@ -71,16 +55,17 @@ class DocPredictionTrainer(trainer.Trainer):
 
     def __init__(self, dataset, epochs=D2V_DOC_EPOCHS, batch_size=D2V_DOC_BATCH_SIZE):
         self.dataset = dataset
+        self.epochs = epochs
+        self.batch_size = batch_size
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        max_steps = epochs * dataset.get_size() / batch_size
-        self.batch_size = batch_size
-        super(DocPredictionTrainer, self).__init__(DIR_D2V_DOC_LOGDIR, max_steps=max_steps,
+        super(DocPredictionTrainer, self).__init__(DIR_D2V_DOC_LOGDIR,
                                                    monitored_training_session_config=config,
                                                    log_step_count_steps=1000,
                                                    save_summaries_steps=1000)
 
     def model(self,
+              input_vectors, output_label,
               embedding_size=EMBEDDINGS_SIZE,
               output_classes=9,
               learning_rate_initial=D2V_DOC_LEARNING_RATE_INITIAL,
@@ -89,15 +74,13 @@ class DocPredictionTrainer(trainer.Trainer):
         self.global_step = training_util.get_or_create_global_step()
 
         # inputs/outputs
-        self.input_vectors = tf.placeholder(tf.float32, shape=[self.batch_size, embedding_size],
-                                            name='input_vectors')
-        self.output_label = tf.placeholder(tf.int32, shape=[self.batch_size], name='output_label')
-        output_label = tf.reshape(self.output_label, [self.batch_size, 1])
+        input_vectors = tf.reshape(input_vectors, [self.batch_size, embedding_size])
+        output_label = tf.reshape(output_label, [self.batch_size, 1])
         targets = tf.one_hot(output_label, axis=-1, depth=output_classes, on_value=1.0,
                              off_value=0.0)
         targets = tf.squeeze(targets)
 
-        net = layers.fully_connected(self.input_vectors, embedding_size / 2, activation_fn=tf.tanh)
+        net = layers.fully_connected(input_vectors, embedding_size / 2, activation_fn=tf.tanh)
         logits = layers.fully_connected(net, output_classes, activation_fn=None)
 
         self.prediction = tf.nn.softmax(logits)
@@ -126,17 +109,18 @@ class DocPredictionTrainer(trainer.Trainer):
         return None
 
     def create_graph(self):
-        return self.model()
+        next_tensor = self.dataset.read(batch_size=self.batch_size,
+                                        num_epochs=self.epochs,
+                                        shuffle=True,
+                                        task_spec=self.task_spec)
+        input_vectors, output_label = next_tensor
+        return self.model(input_vectors, output_label)
 
     def train_step(self, session, graph_data):
         embed, label = self.dataset.read()
         lr, _, loss, step, metrics = \
             session.run([self.learning_rate, self.optimizer, self.loss,
-                         self.global_step, self.metrics],
-                        feed_dict={
-                            self.input_vectors: embed,
-                            self.output_label: label,
-                        })
+                         self.global_step, self.metrics])
         if self.is_chief and time.time() > self.print_timestamp + 5 * 60:
             self.print_timestamp = time.time()
             elapsed_time = str(timedelta(seconds=time.time() - self.init_time))

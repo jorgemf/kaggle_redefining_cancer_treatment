@@ -2,13 +2,15 @@
 import zipfile
 import re
 import os
-import csv
+import unicodecsv as csv
 import sys
 import urllib2
 from bs4 import BeautifulSoup
 import unicodedata
 import copy
-from src.configuration import *
+import nltk
+import pandas as pd
+from configuration import *
 
 # increase max csv file in order to load the datasets
 csv.field_size_limit(sys.maxsize)
@@ -47,7 +49,8 @@ def load_csv_dataset(filename):
     """
     dataset = []
     with open(os.path.join(DIR_GENERATED_DATA, filename)) as file:
-        reader = csv.reader(file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        reader = csv.reader(file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL,
+                            errors='ignore')
         for row in reader:
             id = int(row[0])
             text = row[1]
@@ -128,38 +131,28 @@ class DataSample(object):
         return DataSample(self.id, text_copy, self.gene, self.variation, self.real_class)
 
 
-def load_raw_dataset(text_file, variants_file):
+def load_raw_dataset(text_file, variants_file, ignore_empty=False):
     """
     loads the raw dataset into a list of samples where echa sample has
     :param str text_file: the file with the text data
     :param str variants_file: the file with the variants data
     :return List[DataSample]: a list of DataSample
     """
-    with open(os.path.join(DIR_DATA, text_file)) as file:
-        lines = file.readlines()
-        data_text = lines[1:]  # ignore header
-    with open(os.path.join(DIR_DATA, variants_file)) as file:
-        lines = file.readlines()
-        data_variant = lines[1:]  # ignore header
-        header_variants = lines[0].split(',')
+    dp_txt = pd.read_csv(os.path.join(DIR_DATA, text_file), sep='\|\|', header=None, skiprows=1,
+                         names=["ID", "Text"], encoding = 'utf8')
+    dp_var = pd.read_csv(os.path.join(DIR_DATA, variants_file), encoding = 'utf8')
+    dp = pd.merge(dp_var, dp_txt, how='left', on='ID')
     data = []
-    for dataline_text, dataline_variant in zip(data_text, data_variant):
-        dataline_text_split = dataline_text.split('||')
-        dataline_variant_split = dataline_variant.split(',')
-        # basic checks
-        if len(dataline_text_split) != 2:
-            raise Exception('error in text file in line {}'.format(dataline_text))
-        if len(dataline_variant_split) < 3 or len(dataline_variant_split) > 4:
-            raise Exception('error in variant file in line {}'.format(dataline_variant))
-        if dataline_text_split[0] != dataline_variant_split[0]:
-            msg = 'wrong ids in text and variant files {} !+ {}'
-            raise Exception(msg.format(dataline_text_split[0], dataline_variant_split[0]))
-        id = int(dataline_text_split[0].strip())
-        text = dataline_text_split[1].strip()
-        gene = dataline_variant_split[1].strip()
-        variation = dataline_variant_split[2].strip()
-        if len(header_variants) == 4:
-            real_class = int(dataline_variant_split[3].strip())
+    for i in range(len(dp)):
+        id = int(dp['ID'][i])
+        text = dp['Text'][i].strip()
+        if ignore_empty and len(text) < 10:
+            # less than 10 characters, ignore sample
+            continue
+        gene = dp['Gene'][i].strip()
+        variation = dp['Variation'][i].strip()
+        if 'Class' in dp:
+            real_class = int(dp['Class'][i])
         else:
             real_class = None
         data.append(DataSample(id, text, gene, variation, real_class))
@@ -338,7 +331,7 @@ def load_or_parse_mutations_dataset(filename, dataset, genes,
     """
     if not os.path.exists(os.path.join(DIR_GENERATED_DATA, filename)):
         for datasample in dataset:
-            words = datasample.text.split()
+            words = datasample.text
             parsed_words = []
             for word in words:
                 if is_mutation(word, genes):
@@ -403,10 +396,10 @@ def split_mutation(word):
             j = i + 1
             while j < len(word) and word[j] != ' ':
                 j += 1
-            new_words.append('{}'.format(word[i:j]))
+            new_words.append(u'{}'.format(word[i:j]))
             i = j
         elif word[i] != ' ':
-            new_words.append('>{}'.format(word[i]))
+            new_words.append(u'>{}'.format(word[i]))
             i += 1
         else:
             i += 1
@@ -475,8 +468,18 @@ def encode_number(number):
         return '>number_1000'
 
 
+####################################################################################################
+
+def tokenize_documents(documents):
+    for document in documents:
+        text = document.text
+        tokenized_doc = []
+        for sent in nltk.sent_tokenize(text):
+            tokenized_doc += nltk.word_tokenize(sent)
+        document.text = tokenized_doc
+
+
 if __name__ == '__main__':
-    # TODO ignore empty documents
     if not os.path.exists(DIR_GENERATED_DATA):
         os.makedirs(DIR_GENERATED_DATA)
     if not os.path.exists(DIR_DATA_WORD2VEC):
@@ -490,7 +493,7 @@ if __name__ == '__main__':
     print('Extract zip files if not already done...')
     extract_zip_files()
     print('Load raw data...')
-    train_set = load_raw_dataset('training_text', 'training_variants')
+    train_set = load_raw_dataset('training_text', 'training_variants', ignore_empty=True)
     test_set = load_raw_dataset('test_text', 'test_variants')
     print('Clean raw data or load already clean data...')
     train_set = load_or_clean_text_dataset('train_set_text_clean', train_set)
@@ -504,6 +507,10 @@ if __name__ == '__main__':
             set([word.strip() for word in variations if not is_mutation(word, genes)]))
         print('WARNING not all variations are detected as mutations: {}'.format(
             ", ".join(wrong_detections)))
+    print('Tokenizer with nltk...')
+    nltk.download('punkt')
+    tokenize_documents(train_set)
+    tokenize_documents(test_set)
     print('Parse mutations to tokens...')
     train_set = load_or_parse_mutations_dataset('train_set_mutations_parsed', train_set, genes)
     test_set = load_or_parse_mutations_dataset('test_set_mutations_parsed', test_set, genes)
@@ -517,6 +524,7 @@ if __name__ == '__main__':
                                                 saving_fn=save_csv_wikipedia_gen,
                                                 loading_fn=load_csv_wikipedia_gen)
     print('Parse mutations to tokens from wikipedia articles...')
+    tokenize_documents(genes_articles)
     genes_articles = load_or_parse_mutations_dataset('wikipedia_mutations_parsed',
                                                      genes_articles, genes,
                                                      saving_fn=save_csv_wikipedia_gen,

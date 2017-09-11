@@ -9,100 +9,22 @@ import shutil
 from tensorflow.python.training import training_util
 from tensorflow.contrib.tensorboard.plugins import projector
 from tensorflow.contrib import layers
-from src import trainer
-from src.word2vec_process_data import load_word2vec_data
-from src.configuration import *
+import trainer
+from tf_dataset_generator import TFDataSetGenerator
+from word2vec_process_data import load_word2vec_data
+from configuration import *
 
 
-def select_random_labels(labels, num_labels, probabilities):
-    """
-    Selects random labels from a labels list
-    :param List[int] labels: list of labels
-    :param int num_labels: number of labels to select
-    :param List[float] probabilities: weighted probabilities to select a label
-    :return List[int]: list of selected labels
-    """
-    if len(labels) <= num_labels:
-        return labels
-    samples = []
-    probabilities_copy = list(probabilities)
-    probabilities_sum = np.sum(probabilities_copy)
-    for _ in range(num_labels):
-        r = random.random() * probabilities_sum
-        p_sum = 0.0
-        i = 0
-        while p_sum < r:
-            p_sum += probabilities_copy[i]
-            i += 1
-        i -= 1
-        samples.append(labels[i])
-        probabilities_sum -= probabilities_copy[i]
-        probabilities_copy[i] = 0.0
-    return samples
-
-
-def data_generator_buffered(data_generator, buffer_size=100000, randomize=True):
-    """
-    Creates a buffer of samples generated and returns random elements of this buffer if
-    randomize is true.
-    :param data_generator: generator of samples
-    :param buffer_size: size of the buffer of generated samples
-    :param randomize: whether to return a random sample of the buffer or the oldest one
-    :return: a sample from the buffer of samples
-    """
-    buffer = []
-    try:
-        while len(buffer) < buffer_size:
-            buffer.append(data_generator.next())
-    except StopIteration:
-        pass
-    while len(buffer) > 1:
-        if randomize:
-            random_pos = random.randrange(len(buffer))
-        else:
-            random_pos = 0
-        yield buffer[random_pos]
-        del buffer[random_pos]
-        try:
-            buffer.append(data_generator.next())
-        except StopIteration:
-            pass
-    yield buffer[0]
-
-
-def generate_batch(data_generator, batch_size):
-    """
-    Generates batchs of samples given a generator that only generates one sample per iteration
-    :param data_generator: generator of samples
-    :param batch_size: batch size of the data generated
-    :return: a batch list of samples
-    """
-    batch = []
-    for sample in data_generator:
-        batch.append(sample)
-        if len(batch) == batch_size:
-            inputs, outputs = zip(*batch)
-            yield inputs, outputs
-            batch = []
-
-
-class Word2VecDataset(object):
-    """
-    Custom dataset. We use it to feed the session.run method directly.
-    """
-
+class Word2VecDataset(TFDataSetGenerator):
     def __init__(self, vocabulary_size=VOCABULARY_SIZE,
                  window_adjacent_words=W2V_WINDOW_ADJACENT_WORDS,
                  close_words_size=W2V_CLOSE_WORDS_SIZE,
-                 window_close_words=W2V_WINDOW_CLOSE_WORDS,
-                 shuffle_data=True,
-                 batch_size=W2V_BATCH_SIZE):
-        self._size = None
+                 window_close_words=W2V_WINDOW_CLOSE_WORDS):
+        filename = 'word2vec_dataset_{}'.format(vocabulary_size)
+        self.data_file = os.path.join(DIR_DATA_WORD2VEC, filename)
         self.window_adjacent_words = window_adjacent_words
         self.close_words_size = close_words_size
         self.window_close_words = window_close_words
-        filename = 'word2vec_dataset_{}'.format(vocabulary_size)
-        self.data_file = os.path.join(DIR_DATA_WORD2VEC, filename)
 
         _, _, word_frequency_dict = load_word2vec_data('word2vec_dataset',
                                                        vocabulary_size=vocabulary_size)
@@ -114,59 +36,61 @@ class Word2VecDataset(object):
             else:
                 unknown_count += v
         self.probabilities_dict[0] = -math.log(unknown_count)
+        output_types = (tf.int32, tf.int32)
+        super(Word2VecDataset, self).__init__(name='train',
+                                              generator=self._generator,
+                                              output_types=output_types,
+                                              min_queue_examples=1000,
+                                              shuffle_size=100000)
 
-        samples_generator = self._samples_generator()
-        samples_generator = data_generator_buffered(samples_generator, randomize=shuffle_data)
-        self.batch_generator = generate_batch(samples_generator, batch_size)
-
-    def _count_num_records(self):
-        size = 0
+    def _generator(self):
         with open(self.data_file) as f:
-            for line in f:
-                words = line.split()
-                len_text_line = len(words)
-                for i, word in enumerate(words):
+            for l in f:
+                text_line = [int(w) for w in l.split()]
+                probabilities_tl = [self.probabilities_dict[w] for w in text_line]
+                len_text_line = len(text_line)
+                for i, word in enumerate(text_line):
                     aw_min = max(0, i - self.window_adjacent_words)
                     aw_max = min(len_text_line, i + self.window_adjacent_words + 1)
-                    adjacent_words = (i - aw_min) + (aw_max - (i + 1))
+                    adjacent_words = text_line[aw_min:i] + text_line[i + 1:aw_max]
+
                     nsw_min = max(0, min(aw_min, i - self.window_close_words))
                     nsw_max = min(len_text_line, max(aw_max, i + self.window_close_words + 1))
-                    close_words = (aw_min - nsw_min) + (nsw_max - aw_max)
-                    total_pairs = adjacent_words + min(close_words, self.close_words_size)
-                    size += total_pairs
-        return size
+                    close_words = text_line[nsw_min:aw_min] + text_line[aw_max:nsw_max]
 
-    def get_size(self):
-        if self._size is None:
-            self._size = self._count_num_records()
-        return self._size
+                    prob = probabilities_tl[nsw_min:aw_min] + probabilities_tl[aw_max:nsw_max]
+                    close_words_selected = self._select_random_labels(close_words,
+                                                                      self.close_words_size, prob)
 
-    def _samples_generator(self):
-        while True:
-            with open(self.data_file) as f:
-                for l in f:
-                    text_line = [int(w) for w in l.split()]
-                    probabilities_tl = [self.probabilities_dict[w] for w in text_line]
-                    len_text_line = len(text_line)
-                    for i, word in enumerate(text_line):
-                        aw_min = max(0, i - self.window_adjacent_words)
-                        aw_max = min(len_text_line, i + self.window_adjacent_words + 1)
-                        adjacent_words = text_line[aw_min:i] + text_line[i + 1:aw_max]
+                    context = adjacent_words + close_words_selected
+                    for label in context:
+                        yield np.int32(label), np.int32(word)
 
-                        nsw_min = max(0, min(aw_min, i - self.window_close_words))
-                        nsw_max = min(len_text_line, max(aw_max, i + self.window_close_words + 1))
-                        close_words = text_line[nsw_min:aw_min] + text_line[aw_max:nsw_max]
-
-                        prob = probabilities_tl[nsw_min:aw_min] + probabilities_tl[aw_max:nsw_max]
-                        close_words_selected = select_random_labels(close_words,
-                                                                    self.close_words_size, prob)
-
-                        context = adjacent_words + close_words_selected
-                        for label in context:
-                            yield np.int32(label), np.int32(word)
-
-    def read(self):
-        return self.batch_generator.next()
+    def _select_random_labels(self, labels, num_labels, probabilities):
+        """
+        Selects random labels from a labels list
+        :param List[int] labels: list of labels
+        :param int num_labels: number of labels to select
+        :param List[float] probabilities: weighted probabilities to select a label
+        :return List[int]: list of selected labels
+        """
+        if len(labels) <= num_labels:
+            return labels
+        samples = []
+        probabilities_copy = list(probabilities)
+        probabilities_sum = np.sum(probabilities_copy)
+        for _ in range(num_labels):
+            r = random.random() * probabilities_sum
+            p_sum = 0.0
+            i = 0
+            while p_sum < r:
+                p_sum += probabilities_copy[i]
+                i += 1
+            i -= 1
+            samples.append(labels[i])
+            probabilities_sum -= probabilities_copy[i]
+            probabilities_copy[i] = 0.0
+        return samples
 
 
 class Word2VecTrainer(trainer.Trainer):
@@ -177,15 +101,16 @@ class Word2VecTrainer(trainer.Trainer):
 
     def __init__(self, dataset, epochs=W2V_EPOCHS, batch_size=W2V_BATCH_SIZE):
         self.dataset = dataset
+        self.epochs = epochs
+        self.batch_size = batch_size
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        self.batch_size = batch_size
-        max_steps = epochs * dataset.get_size() / batch_size
-        super(Word2VecTrainer, self).__init__(DIR_W2V_LOGDIR, max_steps=max_steps,
+        super(Word2VecTrainer, self).__init__(DIR_W2V_LOGDIR,
                                               monitored_training_session_config=config,
                                               log_step_count_steps=1000, save_summaries_steps=1000)
 
     def model(self,
+              input_label, output_word,
               vocabulary_size=VOCABULARY_SIZE,
               embedding_size=EMBEDDINGS_SIZE,
               num_negative_samples=W2V_NEGATIVE_NUM_SAMPLES,
@@ -195,10 +120,8 @@ class Word2VecTrainer(trainer.Trainer):
         self.global_step = training_util.get_or_create_global_step()
 
         # inputs/outputs
-        self.input_label = tf.placeholder(tf.int32, shape=[self.batch_size], name='input_label')
-        self.output_word = tf.placeholder(tf.int32, shape=[self.batch_size], name='output_word')
-        input_label_reshaped = tf.reshape(self.input_label, [self.batch_size])
-        output_word_reshaped = tf.reshape(self.output_word, [self.batch_size, 1])
+        input_label_reshaped = tf.reshape(input_label, [self.batch_size])
+        output_word_reshaped = tf.reshape(output_word, [self.batch_size, 1])
 
         # embeddings
         matrix_dimension = [vocabulary_size, embedding_size]
@@ -251,18 +174,18 @@ class Word2VecTrainer(trainer.Trainer):
         return None
 
     def create_graph(self):
-        return self.model()
+        next_tensor = self.dataset.read(batch_size=self.batch_size,
+                                        num_epochs=self.epochs,
+                                        shuffle=True,
+                                        task_spec=self.task_spec)
+        input_label, output_word = next_tensor
+        return self.model(input_label, output_word)
 
-    def train_step(self, session, graph_data):
-        labels, words = self.dataset.read()
+    def step(self, session, graph_data):
         if self.is_chief:
-            lr, _, loss, step, embeddings = session.run([self.learning_rate, self.optimizer,
-                                                         self.loss, self.global_step,
-                                                         self.normalized_embeddings],
-                                                        feed_dict={
-                                                            self.input_label: labels,
-                                                            self.output_word: words,
-                                                        })
+            lr, _, loss, step, self.embeddings = session.run([self.learning_rate, self.optimizer,
+                                                              self.loss, self.global_step,
+                                                              self.normalized_embeddings])
             if time.time() > self.print_timestamp + 5 * 60:
                 self.print_timestamp = time.time()
                 elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
@@ -272,15 +195,14 @@ class Word2VecTrainer(trainer.Trainer):
                 embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
                 embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
                 if not os.path.exists(embeddings_filepath):
-                    self.save_embeddings(embeddings)
+                    self.save_embeddings(self.embeddings)
                 else:
                     embeddings_file_timestamp = os.path.getmtime(embeddings_filepath)
                     # save the embeddings every 30 minutes
                     if current_time - embeddings_file_timestamp > 30 * 60:
-                        self.save_embeddings(embeddings)
+                        self.save_embeddings(self.embeddings)
         else:
-            session.run([self.optimizer],
-                        feed_dict={self.input_label: labels, self.output_word: words})
+            session.run([self.optimizer])
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()
@@ -288,16 +210,7 @@ class Word2VecTrainer(trainer.Trainer):
 
     def end(self, session):
         if self.is_chief:
-            try:
-                normalized_embeddings = session.run([self.normalized_embeddings])[0]
-            except:
-                labels, words = self.dataset.read()
-                normalized_embeddings = session.run([self.normalized_embeddings],
-                                                    feed_dict={
-                                                        self.input_label: labels,
-                                                        self.output_word: words,
-                                                    })[0]
-            self.save_embeddings(normalized_embeddings)
+            self.save_embeddings(self.embeddings)
 
     def save_embeddings(self, normalized_embeddings):
         print('Saving embeddings in text format...')

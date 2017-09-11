@@ -1,7 +1,8 @@
-from configuration import *
-import os
+import numpy as np
+import io
 import random
 from preprocess_data import load_csv_dataset
+from configuration import *
 
 
 def load_word2vec_dict(filename, vocabulary_size=VOCABULARY_SIZE):
@@ -14,7 +15,7 @@ def load_word2vec_dict(filename, vocabulary_size=VOCABULARY_SIZE):
     """
     filename = '{}_{}'.format(filename, vocabulary_size)
     filename_dict = '{}_dict'.format(filename)
-    with open(os.path.join(DIR_DATA_WORD2VEC, filename_dict), 'r') as f:
+    with io.open(os.path.join(DIR_DATA_WORD2VEC, filename_dict), 'r', encoding='utf8') as f:
         symbols_dict = {}
         for line in f.readlines():
             data = line.split()
@@ -42,7 +43,7 @@ def transform_words_in_ids(dataset, symbols_dict):
                 words = list([word.strip().lower() for word in words])
                 for word in words:
                     if word not in symbols_dict:
-                        print('word "{}" not in dict, parsed to unknown token 0'.format(word))
+                        print(u'word "{}" not in dict, parsed to unknown token 0'.format(word))
                         encoded_sentence.append(0)
                     else:
                         encoded_sentence.append(symbols_dict[word.lower()])
@@ -51,7 +52,7 @@ def transform_words_in_ids(dataset, symbols_dict):
         datasample.text = parsed_sentences
 
 
-def balance_class(dataset, final_num=TC_DATA_AUGMENTATION_SAMPLES_PER_CLASS):
+def balance_class(dataset):
     """
     Balance the classes to a target value of number of elements per class. This method only
     replicates the samples in the class until if matchs the final_num
@@ -67,11 +68,11 @@ def balance_class(dataset, final_num=TC_DATA_AUGMENTATION_SAMPLES_PER_CLASS):
     classes_string = ", ".join(
         ["{}:{}".format(k, len(classes_group[k])) for k in sorted(classes_group.keys())])
     print("{} different classes: {}".format(len(classes_group), classes_string))
-
+    max_in_class = np.max([len(v) for v in classes_group.values()]) * 2
     new_dataset = []
     for key, class_list in classes_group.iteritems():
         random.shuffle(class_list)
-        for index in range(final_num - len(class_list)):
+        for index in range(max_in_class - len(class_list)):
             class_list.append(class_list[index].__copy__())
         new_dataset.extend(class_list)
 
@@ -147,12 +148,12 @@ def data_stats(train_set, test_set):
     print('Maximum sentences in a doc is {}'.format(max_sentences_doc))
     print('Average sentence is {}'.format(sum_sentences_lengths / num_sentences))
     print('Longest sentence is {}'.format(max_sentence_length))
-    # Average words in a doc is 12715
-    # Maximum words in a doc is 116760
-    # Average sentences in a doc is 339
+    # Average words in a doc is 12617
+    # Maximum words in a doc is 115316
+    # Average sentences in a doc is 340
     # Maximum sentences in a doc is 3282
     # Average sentence is 36
-    # Longest sentence is 4336
+    # Longest sentence is 4048
 
 if __name__ == '__main__':
     print('Generate text data augmentation for text classification model...')

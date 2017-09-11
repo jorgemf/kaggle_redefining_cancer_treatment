@@ -1,7 +1,7 @@
 import re
-import os
-from src.configuration import *
-from src.preprocess_data import load_csv_wikipedia_gen, load_csv_dataset, group_count
+import io
+from configuration import *
+from preprocess_data import load_csv_wikipedia_gen, load_csv_dataset, group_count
 
 
 def load_word2vec_data(filename, vocabulary_size=VOCABULARY_SIZE):
@@ -104,22 +104,23 @@ def load_or_create_dataset_word2vec(filename, text_samples, vocabulary_size=VOCA
         print('Total words: {}'.format(words_count))
         print('words/sentences: {}'.format(float(words_count) / float(len(text_lines))))
 
-        with open(os.path.join(DIR_DATA_WORD2VEC, filename_dict), 'wb') as f:
+        with io.open(os.path.join(DIR_DATA_WORD2VEC, filename_dict), 'w', encoding='utf8') as f:
             for symbol in sorted(symbols_dict.keys()):
-                f.write('{} {}\n'.format(symbol, symbols_dict[symbol]))
-        with open(os.path.join(DIR_DATA_WORD2VEC, filename_vocabulary), 'wb') as f:
+                f.write(u'{} {}\n'.format(symbol, symbols_dict[symbol]))
+        with io.open(os.path.join(DIR_DATA_WORD2VEC, filename_vocabulary), 'w',
+                     encoding='utf8') as f:
             for sentence in encoded_text:
-                f.write(' '.join(str(word) for word in sentence))
-                f.write('\n')
-        with open(os.path.join(DIR_DATA_WORD2VEC, filename_count), 'wb') as f:
+                f.write(u' '.join(str(word) for word in sentence))
+                f.write(u'\n')
+        with io.open(os.path.join(DIR_DATA_WORD2VEC, filename_count), 'w', encoding='utf8') as f:
             for symbol, count in symbols_ordered_by_count:
-                f.write('{} = {}\n'.format(symbol, count))
-        with open(os.path.join(DIR_DATA_WORD2VEC, filename_tsv), 'wb') as f:
-            f.write('word\tcount\tid\n')
-            f.write('_UNKOWN_\t{}\t0\n'.format(len(unknown_symbols)))
+                f.write(u'{} = {}\n'.format(symbol, count))
+        with io.open(os.path.join(DIR_DATA_WORD2VEC, filename_tsv), 'w', encoding='utf8') as f:
+            f.write(u'word\tcount\tid\n')
+            f.write(u'_UNKOWN_\t{}\t0\n'.format(len(unknown_symbols)))
             pos = 1
             for symbol, count in known_symbols:
-                f.write('{}\t{}\t{}\n'.format(symbol, count, pos))
+                f.write(u'{}\t{}\t{}\n'.format(symbol, count, pos))
                 pos += 1
 
     return load_word2vec_data(filename)

@@ -2,3 +2,6 @@ psutil
 numpy
 urllib2
 bs4
+nltk
+unicodecsv
+pandas

@@ -35,7 +35,7 @@ class ModelSimpleBidirectional(ModelSimple):
         output = tf.gather(sequence_output, indexes)
 
         # full connected layer
-        output = tf.nn.dropout(output, dropout)
+        output = layers.dropout(output, keep_prob=dropout, training=training)
         logits = layers.fully_connected(output, num_output_classes, activation_fn=None)
 
         prediction = tf.nn.softmax(logits)

@@ -3,65 +3,55 @@ import csv
 import time
 from datetime import timedelta
 import shutil
+import numpy as np
 from tensorflow.python.training import training_util
 from tensorflow.contrib.tensorboard.plugins import projector
 from tensorflow.contrib import layers
 import trainer
-from word2vec_train import generate_batch, data_generator_buffered
+from tf_dataset_generator import TFDataSetGenerator
 from configuration import *
 
 
-class Doc2VecDataset(object):
+class Doc2VecDataset(TFDataSetGenerator):
     """
     Custom dataset. We use it to feed the session.run method directly.
     """
 
     def __init__(self, type='train',
-                 shuffle_data=True,
-                 context_size=D2V_CONTEXT_SIZE,
-                 batch_size=D2V_BATCH_SIZE):
-        self._size = None
+                 context_size=D2V_CONTEXT_SIZE):
+        self.type = type
         self.context_size = context_size
         filename = '{}_set'.format(type)
+        with open(self.data_file) as f:
+            self.num_docs = len(f.readlines())
         self.data_file = os.path.join(DIR_DATA_DOC2VEC, filename)
 
-        samples_generator = self._samples_generator()
-        samples_generator = data_generator_buffered(samples_generator, randomize=shuffle_data)
-        self.batch_generator = generate_batch(samples_generator, batch_size)
-
-    def _count_num_records(self):
-        size = 0
+        # pre load data in memory for the generator
         with open(self.data_file) as f:
-            for line in f:
-                size += len(line.split()) - self.context_size - 1  # minus context and real class
-        return size
+            # read lines and skip the class
+            self._data_lines = [l.split()[1:] for l in f.readlines()]
+            # skip shorter lines
+            self._data_lines = [l for l in self._data_lines if len(l) > self.context_size]
+            for i, line in enumerate(self._data_lines):
+                self._data_lines[i] = [int(w) for w in line]
+        self._data_indixes = [0] * len(self._data_lines)
 
-    def get_size(self):
-        if self._size is None:
-            self._size = self._count_num_records()
-        return self._size
+        output_types = (tf.int32, tf.int32, tf.int32)
+        super(Doc2VecDataset, self).__init__(name=type,
+                                             generator=self._generator,
+                                             output_types=output_types,
+                                             min_queue_examples=1000,
+                                             shuffle_size=5000)
 
-    def _samples_generator(self):
-        with open(self.data_file) as f:
-            lines = [l.split()[1:] for l in f.readlines()]  # read lines and skip the class
-            lines = [l for l in lines if len(l) > self.context_size]  # skip shorter lines
-            for i, line in enumerate(lines):
-                lines[i] = [int(w) for w in line]
-        indixes = [0] * len(lines)
-        while True:
-            for doc_id in range(len(lines)):
-                line = lines[doc_id]
-                if indixes[doc_id] >= len(line) - self.context_size - 1:
-                    indixes[doc_id] = 0
-                index = indixes[doc_id]
-                context = line[index:index + self.context_size]
-                label = line[index + self.context_size + 1]
-                yield (doc_id, context), label
-
-    def read(self):
-        inputs, label = self.batch_generator.next()
-        doc_id, context = zip(*inputs)
-        return context, doc_id, label
+    def _generator(self):
+        for doc_id in range(len(self._data_lines)):
+            line = self._data_lines[doc_id]
+            if self._data_indixes[doc_id] >= len(line) - self.context_size - 1:
+                self._data_indixes[doc_id] = 0
+            index = self._data_indixes[doc_id]
+            context = line[index:index + self.context_size]
+            label = line[index + self.context_size + 1]
+            yield np.int32(doc_id), np.int32(context), np.int32(label)
 
 
 class Doc2VecTrainer(trainer.Trainer):
@@ -72,18 +62,18 @@ class Doc2VecTrainer(trainer.Trainer):
 
     def __init__(self, dataset, epochs=D2V_EPOCHS, batch_size=D2V_BATCH_SIZE):
         self.dataset = dataset
+        self.epochs = epochs
+        self.batch_size = batch_size
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        self.batch_size = batch_size
-        max_steps = epochs * dataset.get_size() / batch_size
-        super(Doc2VecTrainer, self).__init__(DIR_D2V_LOGDIR, max_steps=max_steps,
+        super(Doc2VecTrainer, self).__init__(DIR_D2V_LOGDIR,
                                              monitored_training_session_config=config,
                                              log_step_count_steps=1000, save_summaries_steps=1000)
 
     def model(self,
+              input_words, input_doc, output_label,
               vocabulary_size=VOCABULARY_SIZE,
               embedding_size=EMBEDDINGS_SIZE,
-              docs_size=D2_TRAIN_DOCS_SIZE,
               context_size=D2V_CONTEXT_SIZE,
               num_negative_samples=D2V_NEGATIVE_NUM_SAMPLES,
               learning_rate_initial=D2V_LEARNING_RATE_INITIAL,
@@ -92,21 +82,19 @@ class Doc2VecTrainer(trainer.Trainer):
         self.global_step = training_util.get_or_create_global_step()
 
         # inputs/outputs
-        self.input_words = tf.placeholder(tf.int32, shape=[self.batch_size, context_size],
-                                          name='input_context')
-        self.input_doc = tf.placeholder(tf.int32, shape=[self.batch_size], name='input_doc')
-        self.output_label = tf.placeholder(tf.int32, shape=[self.batch_size], name='output_label')
-        output_label = tf.reshape(self.output_label, [self.batch_size, 1])
+        input_words = tf.reshape(input_words, [self.batch_size, context_size])
+        input_doc = tf.reshape(input_doc, [self.batch_size])
+        output_label = tf.reshape(output_label, [self.batch_size, 1])
 
         # embeddings
         self.word_embeddings = tf.get_variable(shape=[vocabulary_size, embedding_size],
                                                initializer=layers.xavier_initializer(),
                                                dtype=tf.float32, name='word_embeddings')
-        self.doc_embeddings = tf.get_variable(shape=[docs_size, embedding_size],
+        self.doc_embeddings = tf.get_variable(shape=[self.dataset.num_docs, embedding_size],
                                               initializer=layers.xavier_initializer(),
                                               dtype=tf.float32, name='doc_embeddings')
-        words_embed = tf.nn.embedding_lookup(self.word_embeddings, self.input_words)
-        doc_embed = tf.nn.embedding_lookup(self.word_embeddings, self.input_doc)
+        words_embed = tf.nn.embedding_lookup(self.word_embeddings, input_words)
+        doc_embed = tf.nn.embedding_lookup(self.word_embeddings, input_doc)
         # average the words_embeds
         words_embed_average = tf.reduce_mean(words_embed, axis=1)
         embed = tf.concat([words_embed_average, doc_embed], axis=1)
@@ -164,19 +152,18 @@ class Doc2VecTrainer(trainer.Trainer):
         return None
 
     def create_graph(self):
-        return self.model()
+        next_tensor = self.dataset.read(batch_size=self.batch_size,
+                                        num_epochs=self.epochs,
+                                        shuffle=True,
+                                        task_spec=self.task_spec)
+        input_word, input_doc, output_label = next_tensor
+        return self.model(input_word, input_doc, output_label)
 
     def train_step(self, session, graph_data):
-        words, doc, label = self.dataset.read()
         if self.is_chief:
-            lr, _, loss, step, embeddings_words, embeddings_docs = \
+            lr, _, loss, step, self.embeddings_words, self.embeddings_docs = \
                 session.run([self.learning_rate, self.optimizer, self.loss, self.global_step,
-                             self.word_embeddings, self.doc_embeddings],
-                            feed_dict={
-                                self.input_words: words,
-                                self.input_doc: doc,
-                                self.output_label: label,
-                            })
+                             self.word_embeddings, self.doc_embeddings])
             if time.time() > self.print_timestamp + 5 * 60:
                 self.print_timestamp = time.time()
                 elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
@@ -186,19 +173,14 @@ class Doc2VecTrainer(trainer.Trainer):
                 embeddings_file = 'word_embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
                 embeddings_filepath = os.path.join(DIR_DATA_DOC2VEC, embeddings_file)
                 if not os.path.exists(embeddings_filepath):
-                    self.save_embeddings(embeddings_words, embeddings_docs)
+                    self.save_embeddings(self.embeddings_words, self.embeddings_docs)
                 else:
                     embeddings_file_timestamp = os.path.getmtime(embeddings_filepath)
                     # save the embeddings every 30 minutes
                     if current_time - embeddings_file_timestamp > 30 * 60:
-                        self.save_embeddings(embeddings_words, embeddings_docs)
+                        self.save_embeddings(self.embeddings_words, self.embeddings_docs)
         else:
-            session.run([self.optimizer],
-                        feed_dict={
-                            self.input_words: words,
-                            self.input_doc: doc,
-                            self.output_label: label,
-                        })
+            session.run([self.optimizer])
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()
@@ -206,19 +188,7 @@ class Doc2VecTrainer(trainer.Trainer):
 
     def end(self, session):
         if self.is_chief:
-            try:
-                embeddings_words, embeddings_docs = \
-                    session.run([self.word_embeddings, self.doc_embeddings])
-            except:
-                words, doc, label = self.dataset.read()
-                embeddings_words, embeddings_docs = \
-                    session.run([self.word_embeddings, self.doc_embeddings],
-                                feed_dict={
-                                    self.input_words: words,
-                                    self.input_doc: doc,
-                                    self.output_label: label,
-                                })
-            self.save_embeddings(embeddings_words, embeddings_docs)
+            self.save_embeddings(self.embeddings_words, self.embeddings_docs)
 
     def save_embeddings(self, word_embeddings, doc_embeddings):
         print('Saving embeddings in text format...')

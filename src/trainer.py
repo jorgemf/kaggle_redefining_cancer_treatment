@@ -1,119 +1,9 @@
 import logging
-import os
-import json
-import argparse
 import time
-
-import tensorport
 import tensorflow as tf
 from tensorflow.python.training import session_run_hook
 from tensorflow.python.training.basic_session_run_hooks import StopAtStepHook
-
-
-class TaskSpec(object):
-    """
-    Specification for the task with the job name, index of the task, the parameter servers and
-    the worker servers
-    """
-
-    def __init__(self, job_name='mater', index=0, ps_hosts=None, worker_hosts=None):
-        self.job_name = job_name
-        self.index = index
-
-        if ps_hosts and worker_hosts:
-            ps = ps_hosts if isinstance(ps_hosts, list) else ps_hosts.split(',')
-            worker = worker_hosts if isinstance(worker_hosts, list) else worker_hosts.split(',')
-            self.cluster_spec = tf.train.ClusterSpec({'ps': ps, 'worker': worker, })
-        else:
-            self.cluster_spec = None
-
-    def is_chief(self):
-        return self.index == 0
-
-    def is_ps(self):
-        return self.job_name == 'ps'
-
-    def is_worker(self):
-        return self.job_name == 'worker'
-
-    def join_if_ps(self):
-        if self.is_ps():
-            server = tf.train.Server(self.cluster_spec,
-                                     job_name=self.job_name,
-                                     task_index=self.index)
-            server.join()
-            return True
-        return False
-
-
-def get_task_spec():
-    """
-    Loads the task information from the command line or the enviorment variables (if the command
-    line parameters are not set) and returns a TaskSpec object
-    :return TaskSpec: a TaskSpec object with the information about the task
-    """
-    # get task from parameters
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--job_name', dest='job_name', default=None)
-    parser.add_argument('--task_index', dest='task_index', default=None)
-    parser.add_argument('--ps_hosts', dest='ps_hosts', default=None)
-    parser.add_argument('--worker_hosts', dest='worker_hosts', default=None)
-    args, _ = parser.parse_known_args()
-    if args.job_name:
-        return TaskSpec(job_name=args.job_name, index=args.task_index,
-                        ps_hosts=args.ps_hosts, worker_hosts=args.worker_hosts)
-    # get task from environment:
-    if 'JOB_NAME' in os.environ:
-        return TaskSpec(job_name=os.environ['JOB_NAME'], index=int(os.environ['TASK_INDEX']),
-                        ps_hosts=os.environ.get('PS_HOSTS', None),
-                        worker_hosts=os.environ.get('WORKER_HOSTS', None))
-    if 'TF_CONFIG' in os.environ:
-        env = json.loads(os.environ.get('TF_CONFIG', '{}'))
-        task_data = env.get('task', None) or {'type': 'master', 'index': 0}
-        cluster_data = env.get('cluster', None) or {'ps': None, 'worker': None}
-        return TaskSpec(job_name=task_data['type'], index=int(task_data['index']),
-                        ps_hosts=cluster_data['ps'], worker_hosts=cluster_data['worker'])
-    # return emtpy task spec for running in local
-    return TaskSpec()
-
-
-def get_logs_path(path):
-    """
-    Log dir specification, see: get_logs_path,
-    https://tensorport.com/documentation/api/#get_logs_path
-    :param str path: the path for the logs dir
-    :return str: the real path for the logs
-    """
-    if path.startswith('gs://'):
-        return path
-    return tensorport.get_logs_path(path)
-
-
-def get_data_path(dataset_name, local_root, local_repo='', path=''):
-    """
-    Dataset specification, see: get_data_path,
-    https://tensorport.com/documentation/api/#get_data_path
-
-    If local_root starts with gs:// we suppose a bucket in google cloud and return
-    local_root / local_repo / local_path
-    :param str name: TensorPort dataset repository name,
-        e.g. user_name/repo_name
-    :param str local_root: specifies the root directory for dataset.
-          e.g. /home/username/datasets, gs://my-project/my_dir
-    :param str local_repo: specifies the repo name inside the root data path.
-          e.g. my_repo_data/
-    :param str path: specifies the path inside the repository, (optional)
-          e.g. train
-    :return str: the real path of the dataset
-    """
-    if local_root.startswith('gs://'):
-        return os.path.join(local_root, local_repo, path)
-    return tensorport.get_data_path(
-        dataset_name=dataset_name,
-        local_root=local_root,
-        local_repo=local_repo,
-        path=path
-    )
+from task_spec import get_task_spec, get_logs_path
 
 
 class Trainer(session_run_hook.SessionRunHook):
@@ -124,7 +14,7 @@ class Trainer(session_run_hook.SessionRunHook):
 
     def __init__(self, log_dir, max_time=None, num_steps=None, max_steps=None,
                  save_checkpoint_secs=600, save_summaries_steps=100, log_step_count_steps=100,
-                 monitored_training_session_config=None):
+                 monitored_training_session_config=None, task_spec=None):
         """
         :param str log_dir: directory where logs are stored
         :param int max_time: max time to run the training, by default isNone to run indefinitely
@@ -136,7 +26,6 @@ class Trainer(session_run_hook.SessionRunHook):
         :param int log_step_count_steps: steps to log the steps_count
         :param tf.ConfigProto monitored_training_session_config: an instance of tf.ConfigProto,
         the configuration for the monitored training session
-        Activate these hooks if is_chief==True`, ignore otherwise.
         """
         self.log_dir = get_logs_path(log_dir)
         self.save_checkpoint_secs = save_checkpoint_secs
@@ -147,22 +36,25 @@ class Trainer(session_run_hook.SessionRunHook):
         self.num_steps = num_steps
         self.max_steps = max_steps
         logging.info('Log dir: {}', self.log_dir)
+        if task_spec is None:
+            self.task_spec = get_task_spec()
+        else:
+            self.task_spec = task_spec
 
     def run(self):
         """
         Starts the training
         """
-        task_spec = get_task_spec()
-        if task_spec.cluster_spec:
-            server = tf.train.Server(task_spec.cluster_spec,
-                                     job_name=task_spec.job_name,
-                                     task_index=task_spec.index)
-            if task_spec.is_ps():
+        if self.task_spec.cluster_spec:
+            server = tf.train.Server(self.task_spec.cluster_spec,
+                                     job_name=self.task_spec.job_name,
+                                     task_index=self.task_spec.index)
+            if self.task_spec.is_ps():
                 server.join()
             target = server.target
             device = tf.train.replica_device_setter(
-                worker_device='/job:worker/task:{}'.format(task_spec.index),
-                cluster=task_spec.cluster_spec)
+                worker_device='/job:worker/task:{}'.format(self.task_spec.index),
+                cluster=self.task_spec.cluster_spec)
         else:
             device = None
             target = ''
@@ -184,7 +76,7 @@ class Trainer(session_run_hook.SessionRunHook):
                 hooks.append(StopAtStepHook(num_steps=self.num_steps, last_step=self.max_steps))
 
             logging.info('Creating MonitoredTrainingSession...')
-            self.is_chief = task_spec.index == 0
+            self.is_chief = self.task_spec.index == 0
             with tf.train.MonitoredTrainingSession(
                     master=target,
                     is_chief=self.is_chief,
@@ -199,7 +91,7 @@ class Trainer(session_run_hook.SessionRunHook):
                 logging.info('Starting training...')
 
                 while not sess.should_stop():
-                    self.train_step(sess, graph_data)
+                    self.step(sess, graph_data)
 
     def create_graph(self):
         """
@@ -218,7 +110,7 @@ class Trainer(session_run_hook.SessionRunHook):
         """
         return [], []
 
-    def train_step(self, session, graph_data):
+    def step(self, session, graph_data):
         """
         Function to run one time step.
         :param session: the session

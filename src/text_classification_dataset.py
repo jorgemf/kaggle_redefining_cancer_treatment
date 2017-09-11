@@ -2,22 +2,22 @@ import tensorflow as tf
 import numpy as np
 from itertools import groupby
 from configuration import *
-from dataset_filelines import DatasetFilelines
+from tf_dataset import TFDataSet
 
 
-class TextClassificationDataset(DatasetFilelines):
+class TextClassificationDataset(TFDataSet):
     """
     Helper class for the dataset. See dataset_filelines.DatasetFilelines for more details.
     """
 
-    def __init__(self, type='train', sentence_split=False, **kwargs):
+    def __init__(self, type='train', sentence_split=False):
         """
         :param str type: type of set, either 'train' or 'test'
         """
         if type == 'train':
-            data_files = [os.path.join(DIR_DATA_TEXT_CLASSIFICATION, 'train_set')]
+            data_files = os.path.join(DIR_DATA_TEXT_CLASSIFICATION, 'train_set')
         elif type == 'test':
-            data_files = [os.path.join(DIR_DATA_TEXT_CLASSIFICATION, 'test_set')]
+            data_files = os.path.join(DIR_DATA_TEXT_CLASSIFICATION, 'test_set')
         else:
             raise ValueError('Type can only be train or test but it is {}'.format(type))
         self.type = type
@@ -33,16 +33,15 @@ class TextClassificationDataset(DatasetFilelines):
                         self.sentence_split = int(data[1])
                         break
 
-        super(TextClassificationDataset, self).__init__(name=type, data_files=data_files,
-                                                        min_queue_examples=TC_BATCH_SIZE, **kwargs)
+        super(TextClassificationDataset, self).__init__(name=type,
+                                                        data_files_pattern=data_files,
+                                                        min_queue_examples=100,
+                                                        shuffle_size=10000,
+                                                        padded_shapes=[],
+                                                        padded_values=-1.0)
 
-    def py_func_parse_example(self, example_serialized):
+    def _map(self, example_serialized):
         example_serialized = example_serialized.split()
-        data_sample_class = -1
-        try:
-            data_sample_class = int(example_serialized[0]) - 1  # first class is 1, last one is 9
-        except:
-            pass
         sequence = [np.int32(w) for w in example_serialized[1:]]
         if self.sentence_split is not None:
             groups = groupby(sequence, lambda x: x == self.sentence_split)
@@ -54,30 +53,19 @@ class TextClassificationDataset(DatasetFilelines):
             for i, sentence in enumerate(sequence):
                 if len(sentence) > MAX_WORDS_IN_SENTENCE:
                     sentence = sentence[:MAX_WORDS_IN_SENTENCE]
-                while len(sentence) < MAX_WORDS_IN_SENTENCE:
-                    sentence.append(-1)
                 sequence[i] = np.asarray(sentence, dtype=np.int32)
         else:
             if len(sequence) > MAX_WORDS:
                 sequence = sequence[:MAX_WORDS]
-            # add padding
-            while len(sequence) < MAX_WORDS:
-                sequence.append(-1)
-        return [
-            np.asarray(sequence, dtype=np.int32),
-            np.asarray([data_sample_class], dtype=np.int32)
-        ]
 
-    def py_func_parse_example_types(self):
-        return [tf.int32, tf.int32]
-
-    def py_func_parse_example_inputs_outputs(self):
-        return 1, 1
-
-    def py_fun_parse_example_reshape(self, inputs, outputs):
-        if self.sentence_split is not None:
-            inputs[0] = tf.reshape(inputs[0], [MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
+        if self.type == 'train':
+            # first class is 1, last one is 9
+            data_sample_class = int(example_serialized[0]) - 1
+            return [
+                np.asarray(sequence, dtype=np.int32),
+                np.asarray([data_sample_class], dtype=np.int32)
+            ]
+        elif self.type == 'test':
+            return np.asarray(sequence, dtype=np.int32)
         else:
-            inputs[0] = tf.reshape(inputs[0], [MAX_WORDS])
-        outputs[0] = tf.reshape(outputs[0], [1])
-        return inputs, outputs
+            raise ValueError()

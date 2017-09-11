@@ -1,8 +1,9 @@
-from src.text_classification_process_data import save_text_classification_dataset
-from src.text_classification_process_data import transform_words_in_ids
-from src.text_classification_process_data import load_word2vec_dict
-from src.text_classification_process_data import load_csv_dataset
-from src.configuration import *
+import io
+from text_classification_process_data import save_text_classification_dataset
+from text_classification_process_data import transform_words_in_ids
+from text_classification_process_data import load_word2vec_dict
+from text_classification_process_data import load_csv_dataset
+from configuration import *
 
 if __name__ == '__main__':
     print('Generate text for Doc2Vec model...')
@@ -18,9 +19,10 @@ if __name__ == '__main__':
     save_text_classification_dataset('train_set', train_set, dir=DIR_DATA_DOC2VEC)
     save_text_classification_dataset('test_set', test_set, dir=DIR_DATA_DOC2VEC)
     print('Creating tsv file for tensorboard...')
-    with open(os.path.join(DIR_DATA_DOC2VEC, 'train_set_classes.tsv'), 'wb') as f:
+    with io.open(os.path.join(DIR_DATA_DOC2VEC, 'train_set_classes.tsv'), 'w',
+                 encoding='utf8') as f:
         f.write('class\tid\n')
         pos = 0
         for sample in train_set:
-            f.write('{}\t{}\n'.format(sample.real_class, pos))
+            f.write(u'{}\t{}\n'.format(sample.real_class, pos))
             pos += 1
