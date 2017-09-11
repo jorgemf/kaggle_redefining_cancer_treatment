@@ -4,7 +4,10 @@ import re
 import os
 import unicodecsv as csv
 import sys
-import urllib.request
+if sys.version_info >= (3,0):
+    import urllib.request as urllib
+else:
+    import urllib
 from bs4 import BeautifulSoup
 import unicodedata
 import copy
@@ -192,7 +195,7 @@ RE_FIGURES = re.compile(r"\s*(Fig(ure)?\.? [\w,]+)\s*")
 RE_TABLES = re.compile(r"\s*(Table\.? [\w,]+)\s*")
 RE_WHITE_SPACES = re.compile(r"\s+")
 RE_EMTPY_PARENTHESES = re.compile(r"\(\s*(and)?\s*\)")
-RE_URLS = re.compile(r"((http|ftp)s?:\/\/(?:www\.|(?!www)|)[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|(www|ftp)\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|(http|ftp)s?:\/\/(?:www\.|(?!www)|(ftp))[a-zA-Z0-9]\.[^\s]{2,}|(www|ftp)\.[a-zA-Z0-9]\.[^\s]{2,})")
+RE_URLS = re.compile(r"((http|ftp)s?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|(www|ftp)\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|(http|ftp)s?:\/\/(?:www\.|(?!www)|(ftp))[a-zA-Z0-9]\.[^\s]{2,}|(www|ftp)\.[a-zA-Z0-9]\.[^\s]{2,})")
 
 
 def clean_text(text):
@@ -297,7 +300,7 @@ def get_genes_articles_from_wikipedia(genes):
         if not os.path.exists(filename):
             url = 'https://en.wikipedia.org/wiki/{}'.format(gen)
             try:
-                html = BeautifulSoup(urllib.request.urlopen(url).read(), 'lxml')
+                html = BeautifulSoup(urllib.urlopen(url).read(), 'lxml')
                 html_data = html.find(id='mw-content-text').div.find_all('p')
                 text_data = [h.get_text().strip() for h in html_data]
                 text_data = [t for t in text_data if len(t) > 30 and len(t.split()) > 10]

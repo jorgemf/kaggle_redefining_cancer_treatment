@@ -1,6 +1,7 @@
 psutil
 numpy
-urllib3
+urllib3; python_version >= '3.0'
+urllib2; python_version < '3.0'
 bs4
 nltk
 unicodecsv
