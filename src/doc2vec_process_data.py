@@ -1,9 +1,9 @@
 import io
-from text_classification_process_data import save_text_classification_dataset
-from text_classification_process_data import transform_words_in_ids
-from text_classification_process_data import load_word2vec_dict
-from text_classification_process_data import load_csv_dataset
-from configuration import *
+from src.text_classification_process_data import save_text_classification_dataset
+from src.text_classification_process_data import transform_words_in_ids
+from src.text_classification_process_data import load_word2vec_dict
+from src.text_classification_process_data import load_csv_dataset
+from src.configuration import *
 
 if __name__ == '__main__':
     print('Generate text for Doc2Vec model...')

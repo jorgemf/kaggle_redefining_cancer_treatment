@@ -4,13 +4,13 @@ import re
 import os
 import unicodecsv as csv
 import sys
-import urllib2
+import urllib.request
 from bs4 import BeautifulSoup
 import unicodedata
 import copy
 import nltk
 import pandas as pd
-from configuration import *
+from src.configuration import *
 
 # increase max csv file in order to load the datasets
 csv.field_size_limit(sys.maxsize)
@@ -297,7 +297,7 @@ def get_genes_articles_from_wikipedia(genes):
         if not os.path.exists(filename):
             url = 'https://en.wikipedia.org/wiki/{}'.format(gen)
             try:
-                html = BeautifulSoup(urllib2.urlopen(url).read(), 'lxml')
+                html = BeautifulSoup(urllib.request.urlopen(url).read(), 'lxml')
                 html_data = html.find(id='mw-content-text').div.find_all('p')
                 text_data = [h.get_text().strip() for h in html_data]
                 text_data = [t for t in text_data if len(t) > 30 and len(t.split()) > 10]

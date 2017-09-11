@@ -1,8 +1,8 @@
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
-from configuration import *
-from text_classification_model_simple import ModelSimple
-from text_classification_train import main
+from src.configuration import *
+from src.text_classification_model_simple import ModelSimple
+from src.text_classification_train import main
 
 
 class ModelSimpleBidirectional(ModelSimple):

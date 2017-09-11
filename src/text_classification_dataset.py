@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
 from itertools import groupby
-from configuration import *
-from tf_dataset import TFDataSet
+from src.configuration import *
+from src.tf_dataset import TFDataSet
 
 
 class TextClassificationDataset(TFDataSet):

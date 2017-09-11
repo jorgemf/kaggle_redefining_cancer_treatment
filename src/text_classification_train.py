@@ -6,12 +6,12 @@ import sys
 from tensorflow.python.training import training_util
 from tensorflow.contrib import slim
 from tensorflow.python.ops import variables as tf_variables
-from configuration import *
-import trainer
-from task_spec import get_task_spec
-import evaluator
-import metrics
-from text_classification_dataset import TextClassificationDataset
+from src.configuration import *
+import src.trainer as trainer
+from src.task_spec import get_task_spec
+import src.evaluator as evaluator
+import src.metrics as metrics
+from src.text_classification_dataset import TextClassificationDataset
 
 
 def _load_embeddings(vocabulary_size, embeddings_size):

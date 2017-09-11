@@ -1,12 +1,13 @@
 import tensorflow as tf
 import time
 from datetime import timedelta
+import numpy as np
 from tensorflow.python.training import training_util
 from tensorflow.contrib import layers
-import trainer
-from tf_dataset_generator import TFDataSetGenerator
-from configuration import *
-import metrics
+import src.trainer as trainer
+from src.tf_dataset_generator import TFDataSetGenerator
+from src.configuration import *
+import src.metrics as metrics
 
 
 class DocPredictionDataset(TFDataSetGenerator):
@@ -40,11 +41,13 @@ class DocPredictionDataset(TFDataSetGenerator):
                                                    generator=self._generator,
                                                    output_types=output_types,
                                                    min_queue_examples=1000,
-                                                   shuffle_size=5000)
+                                                   shuffle_size=2000)
 
-    def _samples_generator(self):
-        for i in range(len(self.embeds)):
-            yield self.embeds[i], self.doc_labels[i]
+    def _generator(self):
+        # TODO while repeat doesn't work on dataset do it here:
+        for _ in range(self.epochs):
+            for i in range(len(self.embeds)):
+                yield np.asarray(self.embeds[i], dtype=np.float32), np.int32(self.doc_labels[i])
 
 
 class DocPredictionTrainer(trainer.Trainer):
@@ -54,6 +57,8 @@ class DocPredictionTrainer(trainer.Trainer):
     """
 
     def __init__(self, dataset, epochs=D2V_DOC_EPOCHS, batch_size=D2V_DOC_BATCH_SIZE):
+        # TODO while repeat doesn't work on dataset do it in the dataset:
+        dataset.epochs = epochs
         self.dataset = dataset
         self.epochs = epochs
         self.batch_size = batch_size
@@ -80,7 +85,7 @@ class DocPredictionTrainer(trainer.Trainer):
                              off_value=0.0)
         targets = tf.squeeze(targets)
 
-        net = layers.fully_connected(input_vectors, embedding_size / 2, activation_fn=tf.tanh)
+        net = layers.fully_connected(input_vectors, embedding_size // 2, activation_fn=tf.tanh)
         logits = layers.fully_connected(net, output_classes, activation_fn=None)
 
         self.prediction = tf.nn.softmax(logits)
@@ -116,12 +121,11 @@ class DocPredictionTrainer(trainer.Trainer):
         input_vectors, output_label = next_tensor
         return self.model(input_vectors, output_label)
 
-    def train_step(self, session, graph_data):
-        embed, label = self.dataset.read()
+    def step(self, session, graph_data):
         lr, _, loss, step, metrics = \
             session.run([self.learning_rate, self.optimizer, self.loss,
                          self.global_step, self.metrics])
-        if self.is_chief and time.time() > self.print_timestamp + 5 * 60:
+        if self.is_chief and time.time() > self.print_timestamp + 5 * 60*0:
             self.print_timestamp = time.time()
             elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
             m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}  ' \

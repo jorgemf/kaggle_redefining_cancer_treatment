@@ -4,8 +4,8 @@ import tensorflow as tf
 from tensorflow.python.framework.errors_impl import OutOfRangeError
 from tensorflow.python.training.monitored_session import SingularMonitoredSession
 from tensorflow.python.ops import variables as tf_variables
-from task_spec import get_logs_path
-from trainer import Trainer
+from src.task_spec import get_logs_path
+from src.trainer import Trainer
 
 
 class Evaluator(Trainer):

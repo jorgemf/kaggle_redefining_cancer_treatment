@@ -3,7 +3,7 @@ import time
 import tensorflow as tf
 from tensorflow.python.training import session_run_hook
 from tensorflow.python.training.basic_session_run_hooks import StopAtStepHook
-from task_spec import get_task_spec, get_logs_path
+from src.task_spec import get_task_spec, get_logs_path
 
 
 class Trainer(session_run_hook.SessionRunHook):

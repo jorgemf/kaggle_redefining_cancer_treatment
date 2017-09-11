@@ -1,6 +1,6 @@
 psutil
 numpy
-urllib2
+urllib3
 bs4
 nltk
 unicodecsv

@@ -1,6 +1,6 @@
-from task_spec import get_task_spec
-from trainer import Trainer
-from evaluator import Evaluator
+from src.task_spec import get_task_spec
+from src.trainer import Trainer
+from src.evaluator import Evaluator
 import tensorflow as tf
 from tensorflow.python.training import training_util
 

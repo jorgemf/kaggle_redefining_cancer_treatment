@@ -1,8 +1,8 @@
 import tensorflow as tf
 from tensorflow.contrib.layers.python.layers import layers
-from configuration import *
-from text_classification_model_simple import ModelSimple
-from text_classification_train import main
+from src.configuration import *
+from src.text_classification_model_simple import ModelSimple
+from src.text_classification_train import main
 
 
 class ModelSimpleCNN(ModelSimple):
