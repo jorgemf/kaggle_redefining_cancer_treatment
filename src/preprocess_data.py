@@ -51,7 +51,7 @@ def load_csv_dataset(filename):
     :return List[DataSample]: a list of DataSample
     """
     dataset = []
-    with open(os.path.join(DIR_GENERATED_DATA, filename)) as file:
+    with open(os.path.join(DIR_GENERATED_DATA, filename), 'rb') as file:
         reader = csv.reader(file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL,
                             errors='ignore')
         for row in reader:
