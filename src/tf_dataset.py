@@ -48,11 +48,22 @@ class TFDataSet(object):
         dataset = dataset.repeat(num_epochs)
         if shuffle:
             # read one sample per file
-            dataset = dataset.interleave(self.dataset_class,
-                                         # number of readers the same as number of CPUs
-                                         cycle_length=multiprocessing.cpu_count() + 1,
-                                         # block size is 1 to get directly a flat map
-                                         block_length=1)
+            # TODO in TF 1.3 use:
+            # dataset = dataset.interleave(self.dataset_class,
+            #                              # number of readers the same as number of CPUs
+            #                              cycle_length=multiprocessing.cpu_count() + 1,
+            #                              # block size is 1 to get directly a flat map
+            #                              block_length=1)
+            files = []
+            filename = dataset.make_one_shot_iterator().get_next()
+            try:
+                with tf.Session() as sess:
+                    while True:
+                        d = sess.run(filename)
+                        files.append(d)
+            except OutOfRangeError:
+                pass
+            dataset = self.dataset_class(files)
         else:
             # reads files sequentially
             files = []
@@ -154,7 +165,8 @@ class TFDataSet(object):
         size = 0
         # TODO in TF 1.3 use: dataset = Dataset.list_files(self.data_files_pattern).repeat(1)
         from tensorflow.python.ops import gen_io_ops
-        dataset = Dataset.from_tensor_slices(gen_io_ops.matching_files(self.data_files_pattern)).repeat(1)
+        dataset = Dataset.from_tensor_slices(
+            gen_io_ops.matching_files(self.data_files_pattern)).repeat(1)
 
         dataset = self.dataset_class(dataset).repeat(1)
         samples = 0
