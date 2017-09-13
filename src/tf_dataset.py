@@ -41,7 +41,9 @@ class TFDataSet(object):
         :return: The result of calling dataset.make_one_shot_iterator().get_next()
         """
         # create the dataset of files with the data
-        dataset = Dataset.list_files(self.data_files_pattern)
+        # TODO in TF 1.3 use:  dataset = Dataset.list_files(self.data_files_pattern)
+        from tensorflow.python.ops import gen_io_ops
+        dataset = Dataset.from_tensor_slices(gen_io_ops.matching_files(self.data_files_pattern))
         # set the number of epochs
         dataset = dataset.repeat(num_epochs)
         if shuffle:
