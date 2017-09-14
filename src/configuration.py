@@ -11,10 +11,10 @@ DIR_DATA_WORD2VEC = os.path.join(DIR_GENERATED_DATA, 'word2vec')
 DIR_DATA_DOC2VEC = os.path.join(DIR_GENERATED_DATA, 'doc2vec')
 DIR_DATA_TEXT_CLASSIFICATION = os.path.join(DIR_GENERATED_DATA, 'text_classification')
 # log dirs routes are automatically handle in the trainer
-DIR_W2V_LOGDIR = os.path.join('.', 'model', 'train', 'word2vec')
-DIR_D2V_LOGDIR = os.path.join('.', 'model', 'train', 'doc2vec')
-DIR_D2V_DOC_LOGDIR = os.path.join('.', 'model', 'train', 'doc2vec_doc')
-DIR_TC_LOGDIR = os.path.join('.', 'model', 'train', 'text_classification')
+DIR_W2V_LOGDIR = os.path.join('.', 'model', 'word2vec')
+DIR_D2V_LOGDIR = os.path.join('.', 'model', 'doc2vec')
+DIR_D2V_DOC_LOGDIR = os.path.join('.', 'model', 'doc2vec_doc')
+DIR_TC_LOGDIR = os.path.join('.', 'model', 'text_classification')
 
 # pre process data
 

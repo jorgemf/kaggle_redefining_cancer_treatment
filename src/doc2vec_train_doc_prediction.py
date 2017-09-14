@@ -16,10 +16,8 @@ class DocPredictionDataset(TFDataSetGenerator):
     """
 
     def __init__(self, type='train',
-                 batch_size=D2V_DOC_BATCH_SIZE,
                  vocabulary_size=VOCABULARY_SIZE,
                  embedding_size=EMBEDDINGS_SIZE):
-        self.batch_size = batch_size
         docs_filename = '{}_set'.format(type)
         embeds_filename = 'doc_embeddings_{}_{}'.format(vocabulary_size, embedding_size)
         if type == 'test':
@@ -54,19 +52,16 @@ class DocPredictionTrainer(trainer.Trainer):
     more details.
     """
 
-    def __init__(self, dataset, epochs=D2V_DOC_EPOCHS, batch_size=D2V_DOC_BATCH_SIZE):
-        self.dataset = dataset
-        self.epochs = epochs
-        self.batch_size = batch_size
+    def __init__(self, dataset):
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        super(DocPredictionTrainer, self).__init__(DIR_D2V_DOC_LOGDIR,
+        super(DocPredictionTrainer, self).__init__(DIR_D2V_DOC_LOGDIR, dataset=dataset,
                                                    monitored_training_session_config=config,
                                                    log_step_count_steps=1000,
                                                    save_summaries_steps=1000)
 
     def model(self,
-              input_vectors, output_label,
+              input_vectors, output_label, batch_size,
               embedding_size=EMBEDDINGS_SIZE,
               output_classes=9,
               learning_rate_initial=D2V_DOC_LEARNING_RATE_INITIAL,
@@ -75,8 +70,8 @@ class DocPredictionTrainer(trainer.Trainer):
         self.global_step = training_util.get_or_create_global_step()
 
         # inputs/outputs
-        input_vectors = tf.reshape(input_vectors, [self.batch_size, embedding_size])
-        output_label = tf.reshape(output_label, [self.batch_size, 1])
+        input_vectors = tf.reshape(input_vectors, [batch_size, embedding_size])
+        output_label = tf.reshape(output_label, [batch_size, 1])
         targets = tf.one_hot(output_label, axis=-1, depth=output_classes, on_value=1.0,
                              off_value=0.0)
         targets = tf.squeeze(targets)
@@ -109,13 +104,9 @@ class DocPredictionTrainer(trainer.Trainer):
 
         return None
 
-    def create_graph(self):
-        next_tensor = self.dataset.read(batch_size=self.batch_size,
-                                        num_epochs=self.epochs,
-                                        shuffle=True,
-                                        task_spec=self.task_spec)
-        input_vectors, output_label = next_tensor
-        return self.model(input_vectors, output_label)
+    def create_graph(self, dataset_tensor, batch_size):
+        input_vectors, output_label = dataset_tensor
+        return self.model(input_vectors, output_label, batch_size)
 
     def step(self, session, graph_data):
         lr, _, loss, step, metrics = \
@@ -136,4 +127,5 @@ class DocPredictionTrainer(trainer.Trainer):
 
 if __name__ == '__main__':
     # start the training
-    DocPredictionTrainer(dataset=DocPredictionDataset()).run()
+    trainer = DocPredictionTrainer(dataset=DocPredictionDataset())
+    trainer.run(epochs=D2V_DOC_EPOCHS, batch_size=D2V_DOC_BATCH_SIZE)

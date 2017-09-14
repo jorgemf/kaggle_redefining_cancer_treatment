@@ -62,18 +62,15 @@ class Doc2VecTrainer(trainer.Trainer):
     more details.
     """
 
-    def __init__(self, dataset, epochs=D2V_EPOCHS, batch_size=D2V_BATCH_SIZE):
-        self.dataset = dataset
-        self.epochs = epochs
-        self.batch_size = batch_size
+    def __init__(self, dataset):
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        super(Doc2VecTrainer, self).__init__(DIR_D2V_LOGDIR,
+        super(Doc2VecTrainer, self).__init__(DIR_D2V_LOGDIR, dataset=dataset,
                                              monitored_training_session_config=config,
                                              log_step_count_steps=1000, save_summaries_steps=1000)
 
     def model(self,
-              input_doc, input_words, output_label,
+              input_doc, input_words, output_label, batch_size,
               vocabulary_size=VOCABULARY_SIZE,
               embedding_size=EMBEDDINGS_SIZE,
               context_size=D2V_CONTEXT_SIZE,
@@ -84,9 +81,9 @@ class Doc2VecTrainer(trainer.Trainer):
         self.global_step = training_util.get_or_create_global_step()
 
         # inputs/outputs
-        input_doc = tf.reshape(input_doc, [self.batch_size])
-        input_words = tf.reshape(input_words, [self.batch_size, context_size])
-        output_label = tf.reshape(output_label, [self.batch_size, 1])
+        input_doc = tf.reshape(input_doc, [batch_size])
+        input_words = tf.reshape(input_words, [batch_size, context_size])
+        output_label = tf.reshape(output_label, [batch_size, 1])
 
         # embeddings
         self.word_embeddings = tf.get_variable(shape=[vocabulary_size, embedding_size],
@@ -153,13 +150,9 @@ class Doc2VecTrainer(trainer.Trainer):
 
         return None
 
-    def create_graph(self):
-        next_tensor = self.dataset.read(batch_size=self.batch_size,
-                                        num_epochs=self.epochs,
-                                        shuffle=True,
-                                        task_spec=self.task_spec)
-        input_doc, input_word, output_label = next_tensor
-        return self.model(input_doc, input_word, output_label)
+    def create_graph(self, dataset_tensor, batch_size):
+        input_doc, input_word, output_label = dataset_tensor
+        return self.model(input_doc, input_word, output_label, batch_size)
 
     def step(self, session, graph_data):
         if self.is_chief:
@@ -207,4 +200,5 @@ class Doc2VecTrainer(trainer.Trainer):
 
 if __name__ == '__main__':
     # start the training
-    Doc2VecTrainer(dataset=Doc2VecDataset()).run()
+    trainer = Doc2VecTrainer(dataset=Doc2VecDataset())
+    trainer.run(epochs=D2V_EPOCHS, batch_size=D2V_BATCH_SIZE)

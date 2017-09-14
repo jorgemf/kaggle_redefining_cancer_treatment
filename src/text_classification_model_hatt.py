@@ -7,15 +7,16 @@ from src.text_classification_train import main
 
 
 class ModelHATT(ModelSimple):
-    def model(self, input_words, num_output_classes, embeddings, num_hidden=TC_MODEL_HIDDEN,
-              dropout=TC_MODEL_DROPOUT, word_output_size=TC_HATT_WORD_OUTPUT_SIZE,
+    def model(self, input_words, num_output_classes, batch_size, embeddings,
+              num_hidden=TC_MODEL_HIDDEN, dropout=TC_MODEL_DROPOUT,
+              word_output_size=TC_HATT_WORD_OUTPUT_SIZE,
               sentence_output_size=TC_HATT_SENTENCE_OUTPUT_SIZE, training=True):
         # input_words [document x sentence x word]
         embeddings_size = len(embeddings[0])
 
         embedded_sequence, sentences_length, words_length = \
             self.model_embedded_sequence(embeddings, input_words)
-        batch_size, sentence_size, word_size, _ = tf.unstack(tf.shape(embedded_sequence))
+        _, sentence_size, word_size, _ = tf.unstack(tf.shape(embedded_sequence))
 
         # RNN word level
         with tf.variable_scope('word_level'):

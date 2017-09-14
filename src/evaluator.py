@@ -15,7 +15,7 @@ class Evaluator(Trainer):
     """
 
     def __init__(self, checkpoints_dir, max_time=None, singular_monitored_session_config=None,
-                 infinite_loop=True):
+                 infinite_loop=True, dataset=None):
         """
         :param str checkpoints_dir: directory with the checkpoints, this should be the log_dir
         of the trainer
@@ -24,18 +24,27 @@ class Evaluator(Trainer):
         the configuration for the singular monitored session
         :param bool infinite_loop: whether to run the evaluation in an infinite loop or not.
         Defaults to True
+        :param TFDataSet dataset: the dataset for this evaluator
         """
         self.checkpoints_dir = get_logs_path(checkpoints_dir)
         self.max_time = max_time
         self.singular_monitored_session_config = singular_monitored_session_config
         self.infinite_loop = infinite_loop
+        self.dataset = dataset
         self.lastest_checkpoint = None
 
-    def run(self):
-        logging.info('Creating graph...')
+    def run(self, batch_size=1, epochs=1):
         while True:
             with tf.Graph().as_default():
-                graph_data = self.create_graph()
+                logging.info('Creating graph...')
+                if self.dataset is None:
+                    dataset_tensor = None
+                else:
+                    dataset_tensor = self.dataset.read(batch_size=batch_size,
+                                                       num_epochs=epochs,
+                                                       shuffle=False,
+                                                       task_spec=self.task_spec)
+                graph_data = self.create_graph(dataset_tensor, batch_size)
                 self.saver = tf.train.Saver(var_list=tf_variables.trainable_variables())
                 hooks = self.create_hooks(graph_data)
                 hooks.append(self)
@@ -60,9 +69,11 @@ class Evaluator(Trainer):
         self.saver.restore(session, checkpoint)
         self.lastest_checkpoint = checkpoint
 
-    def create_graph(self):
+    def create_graph(self, dataset_tensor, batch_size):
         """
         Function to create the graph
+        :param dataset_tensor: the tensor with the data created with the dataset.
+        :param batch_size: the batch_size used when run() is called
         :return: Information related with the graph. It will be passed to other functions
         """
         raise NotImplementedError('Should have implemented this')

@@ -99,18 +99,15 @@ class Word2VecTrainer(trainer.Trainer):
     more details.
     """
 
-    def __init__(self, dataset, epochs=W2V_EPOCHS, batch_size=W2V_BATCH_SIZE):
-        self.dataset = dataset
-        self.epochs = epochs
-        self.batch_size = batch_size
+    def __init__(self, dataset):
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        super(Word2VecTrainer, self).__init__(DIR_W2V_LOGDIR,
+        super(Word2VecTrainer, self).__init__(DIR_W2V_LOGDIR, dataset=dataset,
                                               monitored_training_session_config=config,
                                               log_step_count_steps=1000, save_summaries_steps=1000)
 
     def model(self,
-              input_label, output_word,
+              input_label, output_word, batch_size,
               vocabulary_size=VOCABULARY_SIZE,
               embedding_size=EMBEDDINGS_SIZE,
               num_negative_samples=W2V_NEGATIVE_NUM_SAMPLES,
@@ -120,8 +117,8 @@ class Word2VecTrainer(trainer.Trainer):
         self.global_step = training_util.get_or_create_global_step()
 
         # inputs/outputs
-        input_label_reshaped = tf.reshape(input_label, [self.batch_size])
-        output_word_reshaped = tf.reshape(output_word, [self.batch_size, 1])
+        input_label_reshaped = tf.reshape(input_label, [batch_size])
+        output_word_reshaped = tf.reshape(output_word, [batch_size, 1])
 
         # embeddings
         matrix_dimension = [vocabulary_size, embedding_size]
@@ -173,13 +170,9 @@ class Word2VecTrainer(trainer.Trainer):
 
         return None
 
-    def create_graph(self):
-        next_tensor = self.dataset.read(batch_size=self.batch_size,
-                                        num_epochs=self.epochs,
-                                        shuffle=True,
-                                        task_spec=self.task_spec)
-        input_label, output_word = next_tensor
-        return self.model(input_label, output_word)
+    def create_graph(self, dataset_tensor, batch_size):
+        input_label, output_word = dataset_tensor
+        return self.model(input_label, output_word, batch_size)
 
     def step(self, session, graph_data):
         if self.is_chief:
@@ -216,7 +209,7 @@ class Word2VecTrainer(trainer.Trainer):
         print('Saving embeddings in text format...')
         embeddings_file = 'embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
         embeddings_filepath = os.path.join(DIR_DATA_WORD2VEC, embeddings_file)
-        with open(embeddings_filepath, 'wb') as file:
+        with open(embeddings_filepath, 'w') as file:
             writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             writer.writerows(normalized_embeddings)
         # copy the embeddings file to the log dir so we can download it from tensorport
@@ -226,4 +219,5 @@ class Word2VecTrainer(trainer.Trainer):
 
 if __name__ == '__main__':
     # start the training
-    Word2VecTrainer(dataset=Word2VecDataset()).run()
+    trainer = Word2VecTrainer(dataset=Word2VecDataset())
+    trainer.run(epochs=W2V_EPOCHS, batch_size=W2V_BATCH_SIZE)

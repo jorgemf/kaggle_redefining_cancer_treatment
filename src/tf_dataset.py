@@ -63,6 +63,8 @@ class TFDataSet(object):
                         files.append(d)
             except OutOfRangeError:
                 pass
+            import random
+            random.shuffle(files)
             dataset = self.dataset_class(files)
         else:
             # reads files sequentially
@@ -105,7 +107,7 @@ class TFDataSet(object):
                                   # buffer the data as CPUs * batch_size + minimum_size
                                   output_buffer_size=batch_size * multiprocessing.cpu_count() +
                                                      self.min_queue_examples)
-        if self.padded_shapes:
+        if self.padded_shapes is not None:
             dataset = dataset.padded_batch(batch_size, self.padded_shapes, self.padded_values)
         else:
             dataset = dataset.batch(batch_size)

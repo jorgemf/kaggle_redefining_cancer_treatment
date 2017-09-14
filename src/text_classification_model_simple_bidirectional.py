@@ -10,10 +10,11 @@ class ModelSimpleBidirectional(ModelSimple):
     Text classification using a bidirectional dynamic rnn and GRU cells
     """
 
-    def model(self, input_text, num_output_classes, embeddings, num_hidden=TC_MODEL_HIDDEN,
-              num_layers=TC_MODEL_LAYERS, dropout=TC_MODEL_DROPOUT, training=True):
+    def model(self, input_text, num_output_classes, batch_size, embeddings,
+              num_hidden=TC_MODEL_HIDDEN, num_layers=TC_MODEL_LAYERS, dropout=TC_MODEL_DROPOUT,
+              training=True):
         embedded_sequence, sequence_length = self.model_embedded_sequence(embeddings, input_text)
-        batch_size, max_length, _ = tf.unstack(tf.shape(embedded_sequence))
+        _, max_length, _ = tf.unstack(tf.shape(embedded_sequence))
 
         # Recurrent network.
         cell_fw = tf.nn.rnn_cell.GRUCell(num_hidden)
@@ -35,7 +36,7 @@ class ModelSimpleBidirectional(ModelSimple):
         output = tf.gather(sequence_output, indexes)
 
         # full connected layer
-        output = layers.dropout(output, keep_prob=dropout, training=training)
+        output = layers.dropout(output, keep_prob=dropout, is_training=training)
         logits = layers.fully_connected(output, num_output_classes, activation_fn=None)
 
         prediction = tf.nn.softmax(logits)

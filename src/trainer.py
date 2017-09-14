@@ -14,7 +14,7 @@ class Trainer(session_run_hook.SessionRunHook):
 
     def __init__(self, log_dir, max_time=None, num_steps=None, max_steps=None,
                  save_checkpoint_secs=600, save_summaries_steps=100, log_step_count_steps=100,
-                 monitored_training_session_config=None, task_spec=None):
+                 monitored_training_session_config=None, task_spec=None, dataset=None):
         """
         :param str log_dir: directory where logs are stored
         :param int max_time: max time to run the training, by default isNone to run indefinitely
@@ -26,6 +26,7 @@ class Trainer(session_run_hook.SessionRunHook):
         :param int log_step_count_steps: steps to log the steps_count
         :param tf.ConfigProto monitored_training_session_config: an instance of tf.ConfigProto,
         the configuration for the monitored training session
+        :param TFDataSet dataset: the dataset for this trainer
         """
         self.log_dir = get_logs_path(log_dir)
         self.save_checkpoint_secs = save_checkpoint_secs
@@ -40,10 +41,13 @@ class Trainer(session_run_hook.SessionRunHook):
             self.task_spec = get_task_spec()
         else:
             self.task_spec = task_spec
+        self.dataset = dataset
 
-    def run(self):
+    def run(self, batch_size, epochs):
         """
         Starts the training
+        :param batch_size: the batch size
+        :param epochs: the number of epochs to run
         """
         if self.task_spec.cluster_spec:
             server = tf.train.Server(self.task_spec.cluster_spec,
@@ -59,10 +63,17 @@ class Trainer(session_run_hook.SessionRunHook):
             device = None
             target = ''
 
-        logging.info('Creating graph...')
         with tf.Graph().as_default():
+            logging.info('Creating graph...')
+            if self.dataset is None:
+                dataset_tensor = None
+            else:
+                dataset_tensor = self.dataset.read(batch_size=batch_size,
+                                                   num_epochs=epochs,
+                                                   shuffle=True,
+                                                   task_spec=self.task_spec)
             with tf.device(device):
-                graph_data = self.create_graph()
+                graph_data = self.create_graph(dataset_tensor, batch_size)
 
             hooks, chief_only_hooks = self.create_hooks(graph_data)
             if hooks is None:
@@ -93,9 +104,11 @@ class Trainer(session_run_hook.SessionRunHook):
                 while not sess.should_stop():
                     self.step(sess, graph_data)
 
-    def create_graph(self):
+    def create_graph(self, dataset_tensor, batch_size):
         """
         Function to create the graph
+        :param dataset_tensor: the tensor with the data created with the dataset.
+        :param batch_size: the batch_size used when run() is called
         :return: Information related with the graph. It will be passed to other functions
         """
         raise NotImplementedError('Should have implemented this')

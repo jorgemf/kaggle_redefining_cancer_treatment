@@ -11,13 +11,15 @@ class ModelSimple(object):
     Base class to create models for text classification. It uses several layers of GRU cells.
     """
 
-    def model(self, input_text, num_output_classes, embeddings, num_hidden=TC_MODEL_HIDDEN,
-              num_layers=TC_MODEL_LAYERS, dropout=TC_MODEL_DROPOUT, training=True):
+    def model(self, input_text, num_output_classes, batch_size, embeddings,
+              num_hidden=TC_MODEL_HIDDEN, num_layers=TC_MODEL_LAYERS, dropout=TC_MODEL_DROPOUT,
+              training=True):
         """
         Creates a model for text classification
         :param tf.Tensor input_text: the input data, the text as
         [batch_size, text_vector_max_length, embeddings_size]
         :param int num_output_classes: the number of output classes for the classifier
+        :param int batch_size: batch size, the same used in the dataset
         :param List[List[float]] embeddings: a matrix with the embeddings for the embedding lookup
         :param int num_hidden: number of hidden GRU cells in every layer
         :param int num_layers: number of layers of the model
@@ -26,7 +28,7 @@ class ModelSimple(object):
         :return Dict[str,tf.Tensor]: a dict with logits and prediction tensors
         """
         embedded_sequence, sequence_length = self.model_embedded_sequence(embeddings, input_text)
-        batch_size, max_length, _ = tf.unstack(tf.shape(embedded_sequence))
+        _, max_length, _ = tf.unstack(tf.shape(embedded_sequence))
 
         # Recurrent network.
         cells = []
@@ -47,7 +49,7 @@ class ModelSimple(object):
         output = tf.gather(sequence_output, indexes)
 
         # full connected layer
-        output = layers.dropout(output, keep_prob=dropout, training=training)
+        output = layers.dropout(output, keep_prob=dropout, is_training=training)
         logits = layers.fully_connected(output, num_output_classes, activation_fn=None)
 
         prediction = tf.nn.softmax(logits)
