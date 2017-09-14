@@ -14,9 +14,9 @@ class DistributedTrainer(Trainer):
     """
 
     def __init__(self, log_dir, dataset, model_fn, task_spec, **kwargs):
-        super(DistributedTrainer, self).__init__(log_dir=log_dir, task_spec=task_spec, **kwargs)
-        self.dataset = dataset
         self.model_fn = model_fn
+        super(DistributedTrainer, self).__init__(log_dir=log_dir, dataset=dataset,
+                                                 task_spec=task_spec, **kwargs)
 
     def create_graph(self, dataset_tensor, batch_size):
         return self.model_fn(dataset_tensor=dataset_tensor,
@@ -36,9 +36,9 @@ class DistributedEvaluator(Evaluator):
     """
 
     def __init__(self, log_dir, dataset, model_fn, **kwargs):
-        super(DistributedEvaluator, self).__init__(checkpoints_dir=log_dir, **kwargs)
-        self.dataset = dataset
         self.model_fn = model_fn
+        super(DistributedEvaluator, self).__init__(checkpoints_dir=log_dir, dataset=dataset,
+                                                   **kwargs)
         self.eval_writer = tf.summary.FileWriter(log_dir)
 
     def create_graph(self, dataset_tensor, batch_size):
