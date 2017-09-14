@@ -199,26 +199,19 @@ def main(model, name, sentence_split=False):
         evaluator.run()
     else:
         # training
-        task_spec = get_task_spec()
+        task_spec = get_task_spec(with_evaluator=True)
         if task_spec.join_if_ps():
             # join if it is a parameters server and do nothing else
             return
 
         # use the train dataset for training and testing. Not what ideally we would do in most cases
         dataset = TextClassificationDataset(type='train', sentence_split=sentence_split)
-        if task_spec.num_workers <= 1:
-            # single machine training, we don't run the evaluator
-            trainer = TextClassificationTrainer(dataset=dataset, text_classification_model=model,
-                                                log_dir='{}_{}'.format(DIR_TC_LOGDIR, name))
-            trainer.run(epochs=TC_EPOCHS, batch_size=TC_BATCH_SIZE)
-        elif task_spec.index == task_spec.num_workers - 1:
+        if task_spec.is_evaluator():
             # evaluator running in the last worker
             tester = TextClassificationTest(dataset=dataset, text_classification_model=model,
                                             log_dir='{}_{}'.format(DIR_TC_LOGDIR, name))
             tester.run()
         else:
-            # run trainer in the rest of the workers
-            task_spec.num_workers -= 1
             trainer = TextClassificationTrainer(dataset=dataset, text_classification_model=model,
                                                 log_dir='{}_{}'.format(DIR_TC_LOGDIR, name),
                                                 task_spec=task_spec)

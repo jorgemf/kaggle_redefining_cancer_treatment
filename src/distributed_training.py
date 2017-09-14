@@ -92,20 +92,18 @@ def launch_train_evaluation(model_fn, log_dir, epochs, train_batch_size, train_d
     :param trainer_class: custom trainer, defaults to DistributedTrainer
     :param evaluator_class: custom trainer, defaults to DistributedEvaluator
     """
-    task_spec = get_task_spec()
+    task_spec = get_task_spec(with_evaluator=True)
     if task_spec.num_workers <= 1:
         raise ValueError('More than one worker needed in order to perform a continuos evaluation')
     if task_spec.join_if_ps():
         return  # join if it is a parameters server and do nothing else
-    if task_spec.index == task_spec.num_workers - 1:
+    if task_spec.is_evaluator():
         # run evaluator
         evaluator = evaluator_class(log_dir=log_dir,
                                     dataset=eval_dataset,
                                     model_fn=model_fn)
         evaluator.run()
     else:
-        # run trainer (last worker is doing evaluation)
-        task_spec.num_workers -= 1
         trainer = trainer_class(log_dir=log_dir,
                                 dataset=train_datasest,
                                 model_fn=model_fn,

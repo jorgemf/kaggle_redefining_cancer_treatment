@@ -42,8 +42,7 @@ class Evaluator(Trainer):
                 else:
                     dataset_tensor = self.dataset.read(batch_size=batch_size,
                                                        num_epochs=epochs,
-                                                       shuffle=False,
-                                                       task_spec=self.task_spec)
+                                                       shuffle=False)
                 graph_data = self.create_graph(dataset_tensor, batch_size)
                 self.saver = tf.train.Saver(var_list=tf_variables.trainable_variables())
                 hooks = self.create_hooks(graph_data)

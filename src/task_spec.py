@@ -11,18 +11,23 @@ class TaskSpec(object):
     the worker servers
     """
 
-    def __init__(self, job_name='master', index=0, ps_hosts=None, worker_hosts=None):
+    def __init__(self, job_name='master', index=0, ps_hosts=None, worker_hosts=None,
+                 with_evaluator=False):
         self.job_name = job_name
         self.index = index
+        self.evaluator = False
+        self.cluster_spec = None
+        self.num_workers = 1
 
         if ps_hosts and worker_hosts:
             ps = ps_hosts if isinstance(ps_hosts, list) else ps_hosts.split(',')
             worker = worker_hosts if isinstance(worker_hosts, list) else worker_hosts.split(',')
-            self.cluster_spec = tf.train.ClusterSpec({'ps': ps, 'worker': worker, })
+            if with_evaluator and len(worker) > 1:
+                # last worker will be the evaluator
+                self.evaluator = self.is_worker() and len(worker) == index
+                worker = worker[:-1]
+            self.cluster_spec = tf.train.ClusterSpec({'ps': ps, 'worker': worker})
             self.num_workers = len(worker)
-        else:
-            self.cluster_spec = None
-            self.num_workers = 1
 
     def is_chief(self):
         return self.index == 0
@@ -32,6 +37,9 @@ class TaskSpec(object):
 
     def is_worker(self):
         return self.job_name == 'worker' or self.job_name == 'master'
+
+    def is_evaluator(self):
+        return self.evaluator
 
     def join_if_ps(self):
         if self.is_ps():
@@ -43,7 +51,7 @@ class TaskSpec(object):
         return False
 
 
-def get_task_spec():
+def get_task_spec(with_evaluator=False):
     """
     Loads the task information from the command line or the enviorment variables (if the command
     line parameters are not set) and returns a TaskSpec object
@@ -58,18 +66,21 @@ def get_task_spec():
     args, _ = parser.parse_known_args()
     if args.job_name:
         return TaskSpec(job_name=args.job_name, index=args.task_index,
-                        ps_hosts=args.ps_hosts, worker_hosts=args.worker_hosts)
+                        ps_hosts=args.ps_hosts, worker_hosts=args.worker_hosts,
+                        with_evaluator=with_evaluator)
     # get task from environment:
     if 'JOB_NAME' in os.environ:
         return TaskSpec(job_name=os.environ['JOB_NAME'], index=int(os.environ['TASK_INDEX']),
                         ps_hosts=os.environ.get('PS_HOSTS', None),
-                        worker_hosts=os.environ.get('WORKER_HOSTS', None))
+                        worker_hosts=os.environ.get('WORKER_HOSTS', None),
+                        with_evaluator=with_evaluator)
     if 'TF_CONFIG' in os.environ:
         env = json.loads(os.environ.get('TF_CONFIG', '{}'))
         task_data = env.get('task', None) or {'type': 'master', 'index': 0}
         cluster_data = env.get('cluster', None) or {'ps': None, 'worker': None}
         return TaskSpec(job_name=task_data['type'], index=int(task_data['index']),
-                        ps_hosts=cluster_data['ps'], worker_hosts=cluster_data['worker'])
+                        ps_hosts=cluster_data['ps'], worker_hosts=cluster_data['worker'],
+                        with_evaluator=with_evaluator)
     # return emtpy task spec for running in local
     return TaskSpec()
 
