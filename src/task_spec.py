@@ -24,8 +24,8 @@ class TaskSpec(object):
             worker = worker_hosts if isinstance(worker_hosts, list) else worker_hosts.split(',')
             if with_evaluator and len(worker) > 1:
                 # last worker will be the evaluator
-                self.evaluator = self.is_worker() and len(worker) == index
                 worker = worker[:-1]
+                self.evaluator = self.is_worker() and len(worker) == index
             self.cluster_spec = tf.train.ClusterSpec({'ps': ps, 'worker': worker})
             self.num_workers = len(worker)
 

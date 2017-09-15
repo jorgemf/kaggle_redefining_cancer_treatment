@@ -17,16 +17,16 @@ class TextClassificationDataset(TFDataSet):
         if type == 'train':
             data_files = os.path.join(DIR_DATA_TEXT_CLASSIFICATION, 'train_set')
             if sentence_split:
-                padded_shape = ([-1, MAX_WORDS_IN_SENTENCE], [1])
+                padded_shape = ([None, MAX_WORDS_IN_SENTENCE], [1])
             else:
-                padded_shape = ([-1], [1])
+                padded_shape = ([None], [1])
             padded_values = (-1, -1)
         elif type == 'test':
             data_files = os.path.join(DIR_DATA_TEXT_CLASSIFICATION, 'test_set')
             if sentence_split:
-                padded_shape = [-1, MAX_WORDS_IN_SENTENCE]
+                padded_shape = [None, MAX_WORDS_IN_SENTENCE]
             else:
-                padded_shape = [-1]
+                padded_shape = [None]
             padded_values = -1
         else:
             raise ValueError('Type can only be train or test but it is {}'.format(type))
@@ -51,12 +51,12 @@ class TextClassificationDataset(TFDataSet):
                                                         padded_values=padded_values)
 
     def _map(self, example_serialized):
-        def _parse_sequence(example_serialized, type):
+        def _parse_sequence(example_serialized, dataset_type):
             example_serialized = example_serialized.split()
-            sequence = [np.int32(w) for w in example_serialized[1:]]
+            sequence = list([np.int32(w) for w in example_serialized[1:]])
             if self.sentence_split is not None:
                 groups = groupby(sequence, lambda x: x == self.sentence_split)
-                sequence = [list(g) for k, g in groups if not k]
+                sequence = list([list(g) for k, g in groups if not k])
                 if len(sequence) > MAX_SENTENCES:
                     sequence = sequence[:MAX_SENTENCES]
                 while len(sequence) < MAX_SENTENCES:
@@ -64,19 +64,19 @@ class TextClassificationDataset(TFDataSet):
                 for i, sentence in enumerate(sequence):
                     if len(sentence) > MAX_WORDS_IN_SENTENCE:
                         sentence = sentence[:MAX_WORDS_IN_SENTENCE]
-                    sequence[i] = np.asarray(sentence, dtype=np.int32)
+                    sequence[i] = np.asarray(list(sentence), dtype=np.int32)
             else:
                 if len(sequence) > MAX_WORDS:
                     sequence = sequence[:MAX_WORDS]
 
-            if type == 'train':
+            if dataset_type == 'train':
                 # first class is 1, last one is 9
                 data_sample_class = int(example_serialized[0]) - 1
                 return [
                     np.asarray(sequence, dtype=np.int32),
                     np.asarray([data_sample_class], dtype=np.int32)
                 ]
-            elif type == 'test':
+            elif dataset_type == 'test':
                 return np.asarray(sequence, dtype=np.int32)
             else:
                 raise ValueError()
