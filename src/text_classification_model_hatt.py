@@ -11,6 +11,8 @@ class ModelHATT(ModelSimple):
               num_hidden=TC_MODEL_HIDDEN, dropout=TC_MODEL_DROPOUT,
               word_output_size=TC_HATT_WORD_OUTPUT_SIZE,
               sentence_output_size=TC_HATT_SENTENCE_OUTPUT_SIZE, training=True):
+        # FIXME for TF <= 1.2.0  set shape because of padding issues in dataset
+        input_words = tf.reshape(input_words,[batch_size, MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
         # input_words [document x sentence x word]
         embeddings_size = len(embeddings[0])
 
