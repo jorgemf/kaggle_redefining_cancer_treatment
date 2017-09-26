@@ -22,7 +22,7 @@ class TextClassificationDataset(TFDataSet):
                 padded_shape = ([None], [1])
             padded_values = (-1, -1)
         elif type == 'test' or type == 'stage2_test':
-            data_files = os.path.join(DIR_DATA_TEXT_CLASSIFICATION, 'test_set')
+            data_files = os.path.join(DIR_DATA_TEXT_CLASSIFICATION, '{}_set'.format(type))
             if sentence_split:
                 padded_shape = [None, MAX_WORDS_IN_SENTENCE]
             else:

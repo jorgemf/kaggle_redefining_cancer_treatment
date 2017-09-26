@@ -136,17 +136,18 @@ class TextClassificationEval(evaluator.Evaluator):
 
     def model(self, input_texts, batch_size, vocabulary_size=VOCABULARY_SIZE,
               embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
+        # embeddings
+        embeddings = _load_embeddings(vocabulary_size, embeddings_size)
         # global step
         self.global_step = training_util.get_or_create_global_step()
         self.global_step = tf.assign_add(self.global_step, 1)
-        # embeddings
-        embeddings = _load_embeddings(vocabulary_size, embeddings_size)
         # model
-        with slim.arg_scope(self.text_classification_model.model_arg_scope()):
-            self.outputs = self.text_classification_model.model(input_texts, output_classes,
-                                                                embeddings=embeddings,
-                                                                batch_size=batch_size,
-                                                                training=False)
+        with tf.control_dependencies([self.global_step]):
+            with slim.arg_scope(self.text_classification_model.model_arg_scope()):
+                self.outputs = self.text_classification_model.model(input_texts, output_classes,
+                                                                    embeddings=embeddings,
+                                                                    batch_size=batch_size,
+                                                                    training=False)
         # restore only the trainable variables
         self.saver = tf.train.Saver(var_list=tf_variables.trainable_variables())
         return None
