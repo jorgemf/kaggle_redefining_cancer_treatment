@@ -197,7 +197,7 @@ def main(model, name, sentence_split=False):
         evaluator.run()
     else:
         # training
-        task_spec = get_task_spec(with_evaluator=True)
+        task_spec = get_task_spec(with_evaluator=False)
         if task_spec.join_if_ps():
             # join if it is a parameters server and do nothing else
             return
