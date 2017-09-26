@@ -1,8 +1,8 @@
 import numpy as np
 import io
 import random
-from src.preprocess_data import load_csv_dataset
-from src.configuration import *
+from .preprocess_data import load_csv_dataset
+from .configuration import *
 
 
 def load_word2vec_dict(filename, vocabulary_size=VOCABULARY_SIZE):

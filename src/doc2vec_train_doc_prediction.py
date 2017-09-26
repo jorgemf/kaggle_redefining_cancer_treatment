@@ -4,10 +4,9 @@ from datetime import timedelta
 import numpy as np
 from tensorflow.python.training import training_util
 from tensorflow.contrib import layers
-import src.trainer as trainer
-from src.tf_dataset_generator import TFDataSetGenerator
-from src.configuration import *
-import src.metrics as metrics
+from . import trainer, metrics
+from .tf_dataset_generator import TFDataSetGenerator
+from .configuration import *
 
 
 class DocPredictionDataset(TFDataSetGenerator):

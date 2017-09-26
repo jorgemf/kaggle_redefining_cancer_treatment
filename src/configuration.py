@@ -14,6 +14,7 @@ DIR_DATA_TEXT_CLASSIFICATION = os.path.join(DIR_GENERATED_DATA, 'text_classifica
 DIR_W2V_LOGDIR = os.path.join('.', 'model', 'word2vec')
 DIR_D2V_LOGDIR = os.path.join('.', 'model', 'doc2vec')
 DIR_D2V_DOC_LOGDIR = os.path.join('.', 'model', 'doc2vec_doc')
+DIR_D2V_EVAL_LOGDIR = os.path.join('.', 'model', 'doc2vec_eval')
 DIR_TC_LOGDIR = os.path.join('.', 'model', 'text_classification')
 
 # pre process data

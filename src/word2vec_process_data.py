@@ -1,7 +1,7 @@
 import re
 import io
-from src.configuration import *
-from src.preprocess_data import load_csv_wikipedia_gen, load_csv_dataset, group_count
+from .configuration import *
+from .preprocess_data import load_csv_wikipedia_gen, load_csv_dataset, group_count
 
 
 def load_word2vec_data(filename, vocabulary_size=VOCABULARY_SIZE):
@@ -19,7 +19,7 @@ def load_word2vec_data(filename, vocabulary_size=VOCABULARY_SIZE):
     filename_dict = '{}_dict'.format(filename)
     filename_count = '{}_count'.format(filename)
     with open(os.path.join(DIR_DATA_WORD2VEC, filename_dict), 'r') as f:
-        symbols_dict = {}
+        symbols_dict = { }
         for line in f.readlines():
             data = line.split()
             symbol = data[0]
@@ -31,7 +31,7 @@ def load_word2vec_data(filename, vocabulary_size=VOCABULARY_SIZE):
             encoded_text.append([int(word) for word in line.split()])
     total_count = 0
     with open(os.path.join(DIR_DATA_WORD2VEC, filename_count), 'r') as f:
-        word_frequency_dict = {}
+        word_frequency_dict = { }
         for line in f.readlines():
             line = line.strip()
             if len(line) > 0:
@@ -83,7 +83,7 @@ def load_or_create_dataset_word2vec(filename, text_samples, vocabulary_size=VOCA
         print('Vocabulary size: {}'.format(vocabulary_size))
         unknown_symbols = symbols_ordered_by_count[vocabulary_size - 1:]
         known_symbols = symbols_ordered_by_count[:vocabulary_size - 1]
-        symbols_dict = {}
+        symbols_dict = { }
         for symbol, _ in unknown_symbols:
             symbols_dict[symbol] = 0
         counter = 1
@@ -131,5 +131,5 @@ if __name__ == '__main__':
     train_set = load_csv_dataset('train_set_numbers_parsed')
     genes_articles = load_csv_wikipedia_gen('wikipedia_mutations_parsed')
     word2vec_text = [s.text for s in genes_articles] + [s.text for s in train_set]
-    symbols_dict, word2vec_encoded_text, word_frequency = \
-        load_or_create_dataset_word2vec('word2vec_dataset', word2vec_text)
+    symbols_dict, word2vec_encoded_text, word_frequency = load_or_create_dataset_word2vec(
+        'word2vec_dataset', word2vec_text)

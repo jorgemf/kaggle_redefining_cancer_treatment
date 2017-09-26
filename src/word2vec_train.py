@@ -18,8 +18,7 @@ from src.configuration import *
 class Word2VecDataset(TFDataSetGenerator):
     def __init__(self, vocabulary_size=VOCABULARY_SIZE,
                  window_adjacent_words=W2V_WINDOW_ADJACENT_WORDS,
-                 close_words_size=W2V_CLOSE_WORDS_SIZE,
-                 window_close_words=W2V_WINDOW_CLOSE_WORDS):
+                 close_words_size=W2V_CLOSE_WORDS_SIZE, window_close_words=W2V_WINDOW_CLOSE_WORDS):
         filename = 'word2vec_dataset_{}'.format(vocabulary_size)
         self.data_file = os.path.join(DIR_DATA_WORD2VEC, filename)
         self.window_adjacent_words = window_adjacent_words
@@ -28,7 +27,7 @@ class Word2VecDataset(TFDataSetGenerator):
 
         _, _, word_frequency_dict = load_word2vec_data('word2vec_dataset',
                                                        vocabulary_size=vocabulary_size)
-        self.probabilities_dict = {}
+        self.probabilities_dict = { }
         unknown_count = 0
         for k, v in word_frequency_dict.items():
             if k != 0:
@@ -37,10 +36,8 @@ class Word2VecDataset(TFDataSetGenerator):
                 unknown_count += v
         self.probabilities_dict[0] = -math.log(unknown_count)
         output_types = (tf.int32, tf.int32)
-        super(Word2VecDataset, self).__init__(name='train',
-                                              generator=self._generator,
-                                              output_types=output_types,
-                                              min_queue_examples=1000,
+        super(Word2VecDataset, self).__init__(name='train', generator=self._generator,
+                                              output_types=output_types, min_queue_examples=1000,
                                               shuffle_size=100000)
 
     def _generator(self):
@@ -106,11 +103,8 @@ class Word2VecTrainer(trainer.Trainer):
                                               monitored_training_session_config=config,
                                               log_step_count_steps=1000, save_summaries_steps=1000)
 
-    def model(self,
-              input_label, output_word, batch_size,
-              vocabulary_size=VOCABULARY_SIZE,
-              embedding_size=EMBEDDINGS_SIZE,
-              num_negative_samples=W2V_NEGATIVE_NUM_SAMPLES,
+    def model(self, input_label, output_word, batch_size, vocabulary_size=VOCABULARY_SIZE,
+              embedding_size=EMBEDDINGS_SIZE, num_negative_samples=W2V_NEGATIVE_NUM_SAMPLES,
               learning_rate_initial=W2V_LEARNING_RATE_INITIAL,
               learning_rate_decay=W2V_LEARNING_RATE_DECAY,
               learning_rate_decay_steps=W2V_LEARNING_RATE_DECAY_STEPS):
@@ -123,8 +117,8 @@ class Word2VecTrainer(trainer.Trainer):
         # embeddings
         matrix_dimension = [vocabulary_size, embedding_size]
         self.embeddings = tf.get_variable(shape=matrix_dimension,
-                                          initializer=layers.xavier_initializer(),
-                                          dtype=tf.float32, name='embeddings')
+                                          initializer=layers.xavier_initializer(), dtype=tf.float32,
+                                          name='embeddings')
         embed = tf.nn.embedding_lookup(self.embeddings, input_label_reshaped)
 
         # NCE loss
@@ -132,17 +126,16 @@ class Word2VecTrainer(trainer.Trainer):
         nce_weights = tf.Variable(tf.truncated_normal(matrix_dimension, stddev=stddev))
         nce_biases = tf.Variable(tf.zeros([vocabulary_size]))
         nce_loss = tf.nn.nce_loss(weights=nce_weights, biases=nce_biases,
-                                  labels=output_word_reshaped,
-                                  inputs=embed, num_sampled=num_negative_samples,
-                                  num_classes=vocabulary_size)
+                                  labels=output_word_reshaped, inputs=embed,
+                                  num_sampled=num_negative_samples, num_classes=vocabulary_size)
         self.loss = tf.reduce_mean(nce_loss)
         tf.summary.scalar('loss', self.loss)
 
         # learning rate & optimizer
         self.learning_rate = tf.train.exponential_decay(learning_rate_initial, self.global_step,
                                                         learning_rate_decay_steps,
-                                                        learning_rate_decay,
-                                                        staircase=True, name='learning_rate')
+                                                        learning_rate_decay, staircase=True,
+                                                        name='learning_rate')
         tf.summary.scalar('learning_rate', self.learning_rate)
         sgd = tf.train.GradientDescentOptimizer(self.learning_rate)
         self.optimizer = sgd.minimize(self.loss, global_step=self.global_step)
@@ -176,9 +169,9 @@ class Word2VecTrainer(trainer.Trainer):
 
     def step(self, session, graph_data):
         if self.is_chief:
-            lr, _, loss, step, self.embeddings = session.run([self.learning_rate, self.optimizer,
-                                                              self.loss, self.global_step,
-                                                              self.normalized_embeddings])
+            lr, _, loss, step, self.embeddings = session.run(
+                    [self.learning_rate, self.optimizer, self.loss, self.global_step,
+                     self.normalized_embeddings])
             if time.time() > self.print_timestamp + 5 * 60:
                 self.print_timestamp = time.time()
                 elapsed_time = str(timedelta(seconds=time.time() - self.init_time))

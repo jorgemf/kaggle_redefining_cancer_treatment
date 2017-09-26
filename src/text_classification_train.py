@@ -6,19 +6,17 @@ import sys
 from tensorflow.python.training import training_util
 from tensorflow.contrib import slim
 from tensorflow.python.ops import variables as tf_variables
-from src.configuration import *
-import src.trainer as trainer
-from src.task_spec import get_task_spec
-import src.evaluator as evaluator
-import src.metrics as metrics
-from src.text_classification_dataset import TextClassificationDataset
-from src.distributed_training import launch_train_evaluation
+from .configuration import *
+from . import trainer, evaluator, metrics
+from .task_spec import get_task_spec
+from .text_classification_dataset import TextClassificationDataset
 
 
-def _load_embeddings(vocabulary_size, embeddings_size):
+def _load_embeddings(vocabulary_size, embeddings_size,
+                     filename_prefix='embeddings', from_dir=DIR_DATA_WORD2VEC):
     embeddings = []
-    embeddings_file = 'embeddings_{}_{}'.format(vocabulary_size, embeddings_size)
-    with open(os.path.join(DIR_DATA_WORD2VEC, embeddings_file), 'r') as file:
+    embeddings_file = '{}_{}_{}'.format(filename_prefix, vocabulary_size, embeddings_size)
+    with open(os.path.join(from_dir, embeddings_file), 'r') as file:
         reader = csv.reader(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for row in reader:
             embeddings.append([float(r) for r in row])

@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
 from itertools import groupby
-from src.configuration import *
-from src.tf_dataset import TFDataSet
+from .configuration import *
+from .tf_dataset import TFDataSet
 
 
 class TextClassificationDataset(TFDataSet):
@@ -46,7 +46,7 @@ class TextClassificationDataset(TFDataSet):
         super(TextClassificationDataset, self).__init__(name=type,
                                                         data_files_pattern=data_files,
                                                         min_queue_examples=100,
-                                                        shuffle_size=10000,)
+                                                        shuffle_size=10000)
         # TODO TF <= 1.2.0 have an issue with padding with more than one dimension
         #                                                 padded_shapes=padded_shape,
         #                                                 padded_values=padded_values)

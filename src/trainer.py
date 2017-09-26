@@ -3,7 +3,7 @@ import time
 import tensorflow as tf
 from tensorflow.python.training import session_run_hook
 from tensorflow.python.training.basic_session_run_hooks import StopAtStepHook
-from src.task_spec import get_task_spec, get_logs_path
+from .task_spec import get_task_spec, get_logs_path
 
 
 class Trainer(session_run_hook.SessionRunHook):
@@ -49,30 +49,35 @@ class Trainer(session_run_hook.SessionRunHook):
         :param batch_size: the batch size
         :param epochs: the number of epochs to run
         """
+        if self.task_spec.is_master() and self.task_spec.index > 0:
+            raise ValueError('Only one replica of master expected')
+
         if self.task_spec.cluster_spec:
-            server = tf.train.Server(self.task_spec.cluster_spec,
-                                     job_name=self.task_spec.job_name,
+            server = tf.train.Server(self.task_spec.cluster_spec, job_name=self.task_spec.job_name,
                                      task_index=self.task_spec.index)
             if self.task_spec.is_ps():
                 server.join()
             target = server.target
-            device = tf.train.replica_device_setter(
-                worker_device='/job:worker/task:{}'.format(self.task_spec.index),
-                cluster=self.task_spec.cluster_spec)
+            current_device = '/job:{}/task:{}'.format(self.task_spec.job_name, self.task_spec.index)
+            ps_devices = '/job:ps'
+            device_fn = tf.train.replica_device_setter(ps_device=ps_devices,
+                                                       worker_device=current_device,
+                                                       cluster=self.task_spec.cluster_spec)
+            device_dataset_fn = current_device
         else:
-            device = None
             target = ''
+            device_fn = ''
+            device_dataset_fn = ''
 
         with tf.Graph().as_default():
             logging.info('Creating graph...')
             if self.dataset is None:
                 dataset_tensor = None
             else:
-                dataset_tensor = self.dataset.read(batch_size=batch_size,
-                                                   num_epochs=epochs,
-                                                   shuffle=True,
-                                                   task_spec=self.task_spec)
-            with tf.device(device):
+                with tf.device(device_dataset_fn):
+                    dataset_tensor = self.dataset.read(batch_size=batch_size, num_epochs=epochs,
+                                                       shuffle=True, task_spec=self.task_spec)
+            with tf.device(device_fn):
                 graph_data = self.create_graph(dataset_tensor, batch_size)
 
             hooks, chief_only_hooks = self.create_hooks(graph_data)
@@ -87,16 +92,12 @@ class Trainer(session_run_hook.SessionRunHook):
                 hooks.append(StopAtStepHook(num_steps=self.num_steps, last_step=self.max_steps))
 
             logging.info('Creating MonitoredTrainingSession...')
-            self.is_chief = self.task_spec.index == 0
-            with tf.train.MonitoredTrainingSession(
-                    master=target,
-                    is_chief=self.is_chief,
-                    checkpoint_dir=self.log_dir,
-                    save_checkpoint_secs=self.save_checkpoint_secs,
+            self.is_chief = self.task_spec.is_chief()
+            with tf.train.MonitoredTrainingSession(master=target, is_chief=self.is_chief,
+                    checkpoint_dir=self.log_dir, save_checkpoint_secs=self.save_checkpoint_secs,
                     save_summaries_steps=self.save_summaries_steps,
                     log_step_count_steps=self.log_step_count_steps,
-                    config=self.monitored_training_session_config,
-                    hooks=hooks,
+                    config=self.monitored_training_session_config, hooks=hooks,
                     chief_only_hooks=chief_only_hooks) as sess:
 
                 logging.info('Starting training...')

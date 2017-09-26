@@ -69,17 +69,18 @@ class TFDataSetGenerator(object):
         distributed training or not
         :return: The result of calling dataset.make_one_shot_iterator().get_next()
         """
+
         # TODO in TF 1.4 use: dataset = Dataset.from_generator(self.generator)
         # FIXME repeat doesn't work with generators, so we can encapsulate the generator here
         def _epochs():
             for _ in range(num_epochs):
                 for item in self.generator():
                     yield item
+
         generator_state = _GeneratorState(_epochs)
         output_types = self.output_types
         output_shapes = self.output_shapes
-        output_shapes = nest.map_structure(
-            lambda _: tensor_shape.TensorShape(None), output_types)
+        output_shapes = nest.map_structure(lambda _: tensor_shape.TensorShape(None), output_types)
         flattened_types = nest.flatten(output_types)
         flattened_shapes = nest.flatten(output_shapes)
 
@@ -93,21 +94,19 @@ class TFDataSetGenerator(object):
                 except StopIteration:
                     generator_state.iterator_completed(iterator_id)
                     raise StopIteration("Iteration finished.")
-                ret_arrays = [
-                    script_ops.FuncRegistry._convert(ret)
-                    for ret in nest.flatten_up_to(output_types, values)
-                ]
-                for (ret_array, expected_dtype, expected_shape) in zip(
-                        ret_arrays, flattened_types, flattened_shapes):
+                ret_arrays = [script_ops.FuncRegistry._convert(ret) for ret in
+                    nest.flatten_up_to(output_types, values)]
+                for (ret_array, expected_dtype, expected_shape) in zip(ret_arrays, flattened_types,
+                        flattened_shapes):
                     if ret_array.dtype != expected_dtype.as_numpy_dtype:
                         raise TypeError(
-                            "`generator` yielded an element of type %s where an element "
-                            "of type %s was expected." % (ret_array.dtype,
-                                                          expected_dtype.as_numpy_dtype))
+                                "`generator` yielded an element of type %s where an element "
+                                "of type %s was expected." % (
+                                ret_array.dtype, expected_dtype.as_numpy_dtype))
                     if not expected_shape.is_compatible_with(ret_array.shape):
                         raise ValueError(
-                            "`generator` yielded an element of shape %s where an element "
-                            "of shape %s was expected." % (ret_array.shape, expected_shape))
+                                "`generator` yielded an element of shape %s where an element "
+                                "of shape %s was expected." % (ret_array.shape, expected_shape))
                 return ret_arrays
 
             flat_values = script_ops.py_func(generator_py_func, [iterator_id_t], self.output_types,
@@ -148,9 +147,9 @@ class TFDataSetGenerator(object):
 
         # process each example. We check the method is defined in the child class:
         if self._map.__func__ not in TFDataSetGenerator.__dict__.values():
-            dataset = dataset.map(self._map,
-                                  # use as many threads as CPUs + 1
-                                  # TODO in TF 1.4 use: num_parallel_calls=multiprocessing.cpu_count() + 1,
+            dataset = dataset.map(self._map, # use as many threads as CPUs + 1
+                                  # TODO in TF 1.4 use:
+                                  # num_parallel_calls=multiprocessing.cpu_count() + 1,
                                   num_threads=multiprocessing.cpu_count() + 1,
                                   # buffer the data as CPUs * batch_size + minimum_size
                                   output_buffer_size=batch_size * multiprocessing.cpu_count() +
@@ -167,3 +166,25 @@ class TFDataSetGenerator(object):
         See TFDataSet._map()
         """
         pass
+
+    def _count_num_records(self):
+        """
+        Counts the number of non-empty lines (the data samples) from the data_files. This function
+        is called from get_size the first time.
+        :return int: the number of non-empty lines in the data_files
+        """
+        samples = 0
+        try:
+            next_element = self.read(batch_size=1, num_epochs=1, shuffle=False, task_spec=None)
+            with tf.Session() as sess:
+                while True:
+                    sess.run(next_element)
+                    samples += 1
+        except:
+            pass
+        return samples
+
+    def get_size(self):
+        if self._size is None:
+            self._size = self._count_num_records()
+        return self._size

@@ -1,9 +1,9 @@
 import sys
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
-from src.configuration import *
-from src.text_classification_model_simple import ModelSimple
-from src.text_classification_train import main
+from .configuration import *
+from .text_classification_model_simple import ModelSimple
+from .text_classification_train import main
 
 
 class ModelHATT(ModelSimple):
@@ -12,7 +12,7 @@ class ModelHATT(ModelSimple):
               word_output_size=TC_HATT_WORD_OUTPUT_SIZE,
               sentence_output_size=TC_HATT_SENTENCE_OUTPUT_SIZE, training=True):
         # FIXME for TF <= 1.2.0  set shape because of padding issues in dataset
-        input_words = tf.reshape(input_words,[batch_size, MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
+        input_words = tf.reshape(input_words, [batch_size, MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
         # input_words [document x sentence x word]
         embeddings_size = len(embeddings[0])
 

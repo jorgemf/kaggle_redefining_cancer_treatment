@@ -13,7 +13,7 @@ import unicodedata
 import copy
 import nltk
 import pandas as pd
-from src.configuration import *
+from .configuration import *
 
 # increase max csv file in order to load the datasets
 csv.field_size_limit(sys.maxsize)

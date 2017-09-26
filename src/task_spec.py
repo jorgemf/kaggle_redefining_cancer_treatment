@@ -32,6 +32,9 @@ class TaskSpec(object):
     def is_chief(self):
         return self.index == 0
 
+    def is_master(self):
+        return self.job_name == 'master'
+
     def is_ps(self):
         return self.job_name == 'ps'
 
