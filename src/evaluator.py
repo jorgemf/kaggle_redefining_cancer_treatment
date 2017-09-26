@@ -1,7 +1,7 @@
 import logging
 import time
 import tensorflow as tf
-from tensorflow.python.training import session_run_hook
+from tensorflow.python.training import session_run_hook, training_util
 from tensorflow.python.framework.errors_impl import OutOfRangeError
 from tensorflow.python.training.monitored_session import SingularMonitoredSession
 from tensorflow.python.ops import variables as tf_variables
@@ -46,6 +46,7 @@ class Evaluator(session_run_hook.SessionRunHook):
                                                        shuffle=False)
                 graph_data = self.create_graph(dataset_tensor, batch_size)
                 self.summary_op = tf.summary.merge_all()
+                self.global_step = training_util.get_global_step()
                 self.saver = tf.train.Saver(var_list=tf_variables.trainable_variables())
                 hooks = self.create_hooks(graph_data)
                 hooks.append(self)
@@ -75,10 +76,10 @@ class Evaluator(session_run_hook.SessionRunHook):
         self.lastest_checkpoint = checkpoint
 
     def end(self, session):
-        super(Evaluator, self).end(session)
         # save summaries
         step = int(self.lastest_checkpoint.split('-')[-1])
-        self.summary_writer.add_summary(self.summary, step)
+        if self.summary:
+            self.summary_writer.add_summary(self.summary, step)
 
     def create_graph(self, dataset_tensor, batch_size):
         """

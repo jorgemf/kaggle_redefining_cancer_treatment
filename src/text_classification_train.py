@@ -94,8 +94,9 @@ class TextClassificationTrainer(trainer.Trainer):
 class TextClassificationTest(evaluator.Evaluator):
     """Evaluator for distributed training"""
 
-    def __init__(self, dataset, text_classification_model, log_dir=DIR_TC_LOGDIR):
-        super(TextClassificationTest, self).__init__(checkpoints_dir=log_dir, dataset=dataset)
+    def __init__(self, dataset, text_classification_model, output_path, log_dir=DIR_TC_LOGDIR):
+        super(TextClassificationTest, self).__init__(checkpoints_dir=log_dir, dataset=dataset,
+                                                     output_path=output_path)
         self.text_classification_model = text_classification_model
         self.eval_writer = tf.summary.FileWriter(log_dir)
 
@@ -121,28 +122,15 @@ class TextClassificationTest(evaluator.Evaluator):
     def create_graph(self, dataset_tensor, batch_size):
         input_texts, expected_labels = dataset_tensor
         graph_data = self.model(input_texts, expected_labels, batch_size)
-        self.summary_op = tf.summary.merge_all()
         return graph_data
-
-    def after_create_session(self, session, coord):
-        super(TextClassificationTest, self).after_create_session(session, coord)
-        self.summary_file = tf.summary.FileWriter(self.checkpoints_dir + '/test')
-
-    def end(self, session):
-        super(TextClassificationTest, self).end(session)
-        # save summaries
-        step = int(self.lastest_checkpoint.split('-')[-1])
-        self.summary_file.add_summary(self.summary, step)
-
-    def step(self, session, graph_data):
-        self.summary = session.run(self.summary_op)
 
 
 class TextClassificationEval(evaluator.Evaluator):
     """Evaluator for text classification"""
 
-    def __init__(self, dataset, text_classification_model, log_dir=DIR_TC_LOGDIR):
-        super(TextClassificationEval, self).__init__(checkpoints_dir=log_dir)
+    def __init__(self, dataset, text_classification_model, output_path, log_dir=DIR_TC_LOGDIR):
+        super(TextClassificationEval, self).__init__(checkpoints_dir=log_dir,
+                                                     output_path=output_path)
         self.dataset = dataset
         self.text_classification_model = text_classification_model
 
@@ -150,6 +138,7 @@ class TextClassificationEval(evaluator.Evaluator):
               embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
         # global step
         self.global_step = training_util.get_or_create_global_step()
+        self.global_step = tf.assign_add(self.global_step, 1)
         # embeddings
         embeddings = _load_embeddings(vocabulary_size, embeddings_size)
         # model
@@ -167,12 +156,12 @@ class TextClassificationEval(evaluator.Evaluator):
 
     def after_create_session(self, session, coord):
         super(TextClassificationEval, self).after_create_session(session, coord)
-        self.saver.restore(session, tf.train.latest_checkpoint(self.log_dir))
         print('ID,class1,class2,class3,class4,class5,class6,class7,class8,class9')
 
-    def step(self, session, graph_data):
-        step, predictions = session.run([self.global_step, self.outputs])
-        print('{},{}'.format(step - 1, ','.join([str(x) for x in predictions[0]])))
+    def step(self, session, graph_data, summary_op):
+        step, predictions = session.run([self.global_step, self.outputs['prediction']])
+        print('{},{}'.format(step, ','.join([str(x) for x in predictions[0]])))
+        return None
 
 
 def main(model, name, sentence_split=False):
@@ -183,17 +172,27 @@ def main(model, name, sentence_split=False):
     :param bool sentence_split: whether to split the dataset in sentneces or not,
     only used for hatt model
     """
+    log_dir = '{}_{}'.format(DIR_TC_LOGDIR, name)
     if len(sys.argv) > 1 and sys.argv[1] == 'test':
         # execute the test with the train dataset
         dataset = TextClassificationDataset(type='train', sentence_split=sentence_split)
         tester = TextClassificationTest(dataset=dataset, text_classification_model=model,
-                                        log_dir='{}_{}'.format(DIR_TC_LOGDIR, name))
+                                        log_dir=log_dir,
+                                        output_path=os.path.join(log_dir, 'test_trainset'))
         tester.run()
     elif len(sys.argv) > 1 and sys.argv[1] == 'eval':
         # evaluate the data of the test dataset. We submit this output to kaggle
         dataset = TextClassificationDataset(type='test', sentence_split=sentence_split)
-        evaluator = TextClassificationTest(dataset=dataset, text_classification_model=model,
-                                           log_dir='{}_{}'.format(DIR_TC_LOGDIR, name))
+        evaluator = TextClassificationEval(dataset=dataset, text_classification_model=model,
+                                           log_dir=log_dir,
+                                           output_path=os.path.join(log_dir, 'test'))
+        evaluator.run()
+    elif len(sys.argv) > 1 and sys.argv[1] == 'eval_stage2':
+        # evaluate the data of the test dataset. We submit this output to kaggle
+        dataset = TextClassificationDataset(type='stage2_test', sentence_split=sentence_split)
+        evaluator = TextClassificationEval(dataset=dataset, text_classification_model=model,
+                                           log_dir=log_dir,
+                                           output_path=os.path.join(log_dir, 'test_stage2'))
         evaluator.run()
     else:
         # training
@@ -207,10 +206,10 @@ def main(model, name, sentence_split=False):
         if task_spec.is_evaluator():
             # evaluator running in the last worker
             tester = TextClassificationTest(dataset=dataset, text_classification_model=model,
-                                            log_dir='{}_{}'.format(DIR_TC_LOGDIR, name))
+                                            log_dir=log_dir,
+                                            output_path=os.path.join(log_dir, 'eval'))
             tester.run()
         else:
             trainer = TextClassificationTrainer(dataset=dataset, text_classification_model=model,
-                                                log_dir='{}_{}'.format(DIR_TC_LOGDIR, name),
-                                                task_spec=task_spec)
+                                                log_dir=log_dir, task_spec=task_spec)
             trainer.run(epochs=TC_EPOCHS, batch_size=TC_BATCH_SIZE)

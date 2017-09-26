@@ -21,7 +21,7 @@ class TextClassificationDataset(TFDataSet):
             else:
                 padded_shape = ([None], [1])
             padded_values = (-1, -1)
-        elif type == 'test':
+        elif type == 'test' or type == 'stage2_test':
             data_files = os.path.join(DIR_DATA_TEXT_CLASSIFICATION, 'test_set')
             if sentence_split:
                 padded_shape = [None, MAX_WORDS_IN_SENTENCE]
@@ -84,12 +84,11 @@ class TextClassificationDataset(TFDataSet):
                 return [
                     np.asarray(sequence, dtype=np.int32),
                     np.asarray([data_sample_class], dtype=np.int32)
-                ]
-            elif dataset_type == 'test':
+                    ]
+            elif dataset_type == 'test' or dataset_type == 'stage2_test':
                 return np.asarray(sequence, dtype=np.int32)
             else:
                 raise ValueError()
-
 
         if self.type == 'train':
             sequence, result_class = tf.py_func(lambda x: _parse_sequence(x, self.type),
@@ -97,21 +96,21 @@ class TextClassificationDataset(TFDataSet):
                                                 stateful=True)
             # TODO for TF <= 1.2.0  set shape because of padding
             if self.sentence_split is not None:
-                sequence = tf.reshape(sequence,[MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
+                sequence = tf.reshape(sequence, [MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
             else:
-                sequence = tf.reshape(sequence,[MAX_WORDS])
+                sequence = tf.reshape(sequence, [MAX_WORDS])
 
             sequence = tf.reshape(sequence, [-1])
             result_class = tf.reshape(result_class, [1])
             return sequence, result_class
-        elif type == 'test':
+        elif self.type == 'test' or self.type == 'stage2_test':
             sequence = tf.py_func(lambda x: _parse_sequence(x, self.type),
                                   [example_serialized], [tf.int32], stateful=True)
             # TODO for TF <= 1.2.0  set shape because of padding
             if self.sentence_split is not None:
-                sequence = tf.reshape(sequence,[MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
+                sequence = tf.reshape(sequence, [MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
             else:
-                sequence = tf.reshape(sequence,[MAX_WORDS])
+                sequence = tf.reshape(sequence, [MAX_WORDS])
             return sequence
         else:
             raise ValueError()
