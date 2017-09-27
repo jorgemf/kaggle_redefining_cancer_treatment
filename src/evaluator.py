@@ -46,17 +46,17 @@ class Evaluator(session_run_hook.SessionRunHook):
                                                        shuffle=False)
                 graph_data = self.create_graph(dataset_tensor, batch_size)
                 self.summary_op = tf.summary.merge_all()
+                self.summary = None
                 self.global_step = training_util.get_global_step()
                 self.saver = tf.train.Saver(var_list=tf_variables.trainable_variables())
                 hooks = self.create_hooks(graph_data)
                 hooks.append(self)
                 with SingularMonitoredSession(hooks=hooks,
-                                              config=self.singular_monitored_session_config) as \
-                        sess:
+                                              config=self.singular_monitored_session_config) as s:
                     logging.info('Starting evaluation...')
                     try:
-                        while not sess.should_stop():
-                            self.summary = self.step(sess, graph_data, self.summary_op)
+                        while not s.should_stop():
+                            self.summary = self.step(s, graph_data, self.summary_op)
                     except OutOfRangeError:
                         pass
             if not self.infinite_loop:
@@ -107,5 +107,5 @@ class Evaluator(session_run_hook.SessionRunHook):
         :param summary_op: the op that runs all summaries, the result must be returned
         :return the result of the summary_op
         """
-        summary, _ = session.run([self.summary_op, graph_data])
+        summary, _ = session.run([summary_op, graph_data])
         return summary

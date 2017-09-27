@@ -115,9 +115,9 @@ class TextClassificationTest(evaluator.Evaluator):
         self.loss = self.text_classification_model.loss(targets, outputs)
         tf.summary.scalar('loss', self.loss)
         # metrics
-        self.metrics = metrics.single_label(outputs['prediction'], tf.squeeze(targets),
+        self.metrics = metrics.single_label(outputs['prediction'], tf.squeeze(targets, axis=1),
                                             moving_average=False)
-        return None
+        return self.metrics
 
     def create_graph(self, dataset_tensor, batch_size):
         input_texts, expected_labels = dataset_tensor
@@ -130,7 +130,8 @@ class TextClassificationEval(evaluator.Evaluator):
 
     def __init__(self, dataset, text_classification_model, output_path, log_dir=DIR_TC_LOGDIR):
         super(TextClassificationEval, self).__init__(checkpoints_dir=log_dir,
-                                                     output_path=output_path)
+                                                     output_path=output_path,
+                                                     infinite_loop=False)
         self.dataset = dataset
         self.text_classification_model = text_classification_model
 
@@ -150,7 +151,7 @@ class TextClassificationEval(evaluator.Evaluator):
                                                                     training=False)
         # restore only the trainable variables
         self.saver = tf.train.Saver(var_list=tf_variables.trainable_variables())
-        return None
+        return self.outputs
 
     def create_graph(self, dataset_tensor, batch_size):
         return self.model(dataset_tensor, batch_size)
