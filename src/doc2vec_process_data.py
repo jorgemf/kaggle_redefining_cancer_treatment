@@ -21,7 +21,7 @@ if __name__ == '__main__':
     print('Creating tsv file for tensorboard...')
     with io.open(os.path.join(DIR_DATA_DOC2VEC, 'train_set_classes.tsv'), 'w',
                  encoding='utf8') as f:
-        f.write('class\tid\n')
+        f.write(u'class\tid\n')
         pos = 0
         for sample in train_set:
             f.write(u'{}\t{}\n'.format(sample.real_class, pos))

@@ -14,7 +14,7 @@ class TextClassificationDataset(TFDataSet):
         """
         :param str type: type of set, either 'train' or 'test'
         """
-        if type == 'train':
+        if type == 'train' or type == 'val':
             data_files = os.path.join(DIR_DATA_TEXT_CLASSIFICATION, 'train_set')
             if sentence_split:
                 padded_shape = ([None, MAX_WORDS_IN_SENTENCE], [1])
@@ -29,7 +29,8 @@ class TextClassificationDataset(TFDataSet):
                 padded_shape = [None]
             padded_values = -1
         else:
-            raise ValueError('Type can only be train or test but it is {}'.format(type))
+            raise ValueError(
+                'Type can only be train, val, test or stage2_test but it is {}'.format(type))
         self.type = type
         self.sentence_split = None
         if sentence_split:
@@ -78,7 +79,7 @@ class TextClassificationDataset(TFDataSet):
                     # TODO added padding for TF <= 1.2.0
                     sequence.extend([-1] * (MAX_WORDS - len(sequence)))
 
-            if dataset_type == 'train':
+            if dataset_type == 'train' or dataset_type == 'val':
                 # first class is 1, last one is 9
                 data_sample_class = int(example_serialized[0]) - 1
                 return [
@@ -90,7 +91,7 @@ class TextClassificationDataset(TFDataSet):
             else:
                 raise ValueError()
 
-        if self.type == 'train':
+        if self.type == 'train' or self.type == 'val':
             sequence, result_class = tf.py_func(lambda x: _parse_sequence(x, self.type),
                                                 [example_serialized], [tf.int32, tf.int32],
                                                 stateful=True)

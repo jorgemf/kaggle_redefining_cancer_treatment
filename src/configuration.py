@@ -24,10 +24,10 @@ DIR_WIKIPEDIA_GENES = os.path.join(DIR_GENERATED_DATA, 'gen')
 # shared conf between word2vec and text_classification models
 
 VOCABULARY_SIZE = 40000
-EMBEDDINGS_SIZE = 100
-MAX_WORDS = 40000  # maximum number of words in the document
-MAX_SENTENCES = 1000  # maximum number of sentences in the document
-MAX_WORDS_IN_SENTENCE = 60  # maximum number of words per sentence in the document
+EMBEDDINGS_SIZE = 300
+MAX_WORDS = 20000  # 40000  # maximum number of words in the document
+MAX_SENTENCES = 600  # 1000  # maximum number of sentences in the document
+MAX_WORDS_IN_SENTENCE = 35  # 60  # maximum number of words per sentence in the document
 
 # word2vec
 
@@ -51,7 +51,7 @@ D2V_LEARNING_RATE_INITIAL = 0.01  # initial learning rate for gradient descent
 D2V_LEARNING_RATE_DECAY = 0.9  # decay of learning rate
 D2V_LEARNING_RATE_DECAY_STEPS = 100000  # steps to decay the learning rate
 
-D2V_DOC_EPOCHS = 100  # iterations over the whole dataset
+D2V_DOC_EPOCHS = 200  # iterations over the whole dataset
 D2V_DOC_BATCH_SIZE = 256  # batch size for the training
 D2V_DOC_LEARNING_RATE_INITIAL = 0.01  # initial learning rate for gradient descent
 D2V_DOC_LEARNING_RATE_DECAY = 0.9  # decay of learning rate

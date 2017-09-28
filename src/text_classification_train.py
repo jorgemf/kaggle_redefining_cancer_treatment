@@ -182,6 +182,12 @@ def main(model, name, sentence_split=False):
                                         log_dir=log_dir,
                                         output_path=os.path.join(log_dir, 'test_trainset'))
         tester.run()
+    elif len(sys.argv) > 1 and sys.argv[1] == 'validate':
+        dataset = TextClassificationDataset(type='val', sentence_split=sentence_split)
+        tester = TextClassificationTest(dataset=dataset, text_classification_model=model,
+                                        log_dir=log_dir,
+                                        output_path=os.path.join(log_dir, 'validate'))
+        tester.run()
     elif len(sys.argv) > 1 and sys.argv[1] == 'eval':
         # evaluate the data of the test dataset. We submit this output to kaggle
         dataset = TextClassificationDataset(type='test', sentence_split=sentence_split)
@@ -198,20 +204,20 @@ def main(model, name, sentence_split=False):
         evaluator.run()
     else:
         # training
-        task_spec = get_task_spec(with_evaluator=False)
+        task_spec = get_task_spec(with_evaluator=True)
         if task_spec.join_if_ps():
             # join if it is a parameters server and do nothing else
             return
 
-        # use the train dataset for training and testing. Not what ideally we would do in most cases
-        dataset = TextClassificationDataset(type='train', sentence_split=sentence_split)
         if task_spec.is_evaluator():
+            dataset = TextClassificationDataset(type='val', sentence_split=sentence_split)
             # evaluator running in the last worker
             tester = TextClassificationTest(dataset=dataset, text_classification_model=model,
                                             log_dir=log_dir,
-                                            output_path=os.path.join(log_dir, 'eval'))
+                                            output_path=os.path.join(log_dir, 'val'))
             tester.run()
         else:
+            dataset = TextClassificationDataset(type='train', sentence_split=sentence_split)
             trainer = TextClassificationTrainer(dataset=dataset, text_classification_model=model,
                                                 log_dir=log_dir, task_spec=task_spec)
             trainer.run(epochs=TC_EPOCHS, batch_size=TC_BATCH_SIZE)

@@ -17,23 +17,31 @@ class DocPredictionDataset(TFDataSetGenerator):
     def __init__(self, type='train',
                  vocabulary_size=VOCABULARY_SIZE,
                  embedding_size=EMBEDDINGS_SIZE):
+        if type != 'train' and type != 'test' and type != 'stage2_test' and type != 'val':
+            raise ValueError('Type must be train, test, stage2_test or val')
         docs_filename = '{}_set'.format(type)
-        embeds_filename = 'doc_embeddings_{}_{}'.format(vocabulary_size, embedding_size)
-        if type == 'test':
-            embeds_filename = '{}_{}'.format(type, embeds_filename)
+        if type == 'train':
+            embeds_filename = 'doc_embeddings_{}_{}'.format(vocabulary_size, embedding_size)
+        else:
+            embeds_filename = 'doc_embeddings_{}_{}_{}'.format(type, vocabulary_size,
+                                                               embedding_size)
 
         self.docs_file = os.path.join(DIR_DATA_DOC2VEC, docs_filename)
         self.embeds_file = os.path.join(DIR_DATA_DOC2VEC, embeds_filename)
 
         # pre load data in memory for the generator
-        with open(self.docs_file) as f:
-            self.doc_labels = [int(line.split()[0]) for line in f.readlines()]
+        if type == 'train' or type == 'val':
+            with open(self.docs_file) as f:
+                self.doc_labels = [int(line.split()[0]) for line in f.readlines()]
+            output_types = (tf.float32, tf.int32)
+        else:
+            self.doc_labels = None
+            output_types = tf.float32
         with open(self.embeds_file) as f:
             self.embeds = [l.split(',') for l in f.readlines()]
             for i, line in enumerate(self.embeds):
                 self.embeds[i] = [float(e) for e in line]
 
-        output_types = (tf.float32, tf.int32)
         super(DocPredictionDataset, self).__init__(name=type,
                                                    generator=self._generator,
                                                    output_types=output_types,
@@ -42,7 +50,37 @@ class DocPredictionDataset(TFDataSetGenerator):
 
     def _generator(self):
         for i in range(len(self.embeds)):
-            yield np.asarray(self.embeds[i], dtype=np.float32), np.int32(self.doc_labels[i])
+            embeds = np.asarray(self.embeds[i], dtype=np.float32)
+            if self.doc_labels is None:
+                # evaluation set:
+                yield embeds
+            else:
+                # train or validation set:
+                # subtract 1 to class as classes goes from 1 to 9 (both inclusive)
+                label = np.int32(int(self.doc_labels[i]) - 1)
+                yield embeds, label
+
+
+def doc2vec_prediction_model(input_vectors, output_label, batch_size, is_training,
+                             embedding_size, output_classes):
+    # inputs/outputs
+    input_vectors = tf.reshape(input_vectors, [batch_size, embedding_size])
+    output_label = tf.reshape(output_label, [batch_size, 1])
+    targets = None
+    if output_label is not None:
+        targets = tf.one_hot(output_label, axis=-1, depth=output_classes, on_value=1.0,
+                             off_value=0.0)
+        targets = tf.squeeze(targets)
+
+    net = input_vectors
+    net = layers.fully_connected(net, embedding_size, activation_fn=tf.nn.relu)
+    net = layers.dropout(net, keep_prob=0.8, is_training=is_training)
+    net = layers.fully_connected(net, embedding_size, activation_fn=tf.nn.relu)
+    net = layers.dropout(net, keep_prob=0.8, is_training=is_training)
+    net = layers.fully_connected(net, embedding_size // 4, activation_fn=tf.nn.relu)
+    logits = layers.fully_connected(net, output_classes, activation_fn=None)
+
+    return logits, targets
 
 
 class DocPredictionTrainer(trainer.Trainer):
@@ -68,15 +106,9 @@ class DocPredictionTrainer(trainer.Trainer):
               learning_rate_decay_steps=D2V_DOC_LEARNING_RATE_DECAY_STEPS):
         self.global_step = training_util.get_or_create_global_step()
 
-        # inputs/outputs
-        input_vectors = tf.reshape(input_vectors, [batch_size, embedding_size])
-        output_label = tf.reshape(output_label, [batch_size, 1])
-        targets = tf.one_hot(output_label, axis=-1, depth=output_classes, on_value=1.0,
-                             off_value=0.0)
-        targets = tf.squeeze(targets)
-
-        net = layers.fully_connected(input_vectors, embedding_size // 2, activation_fn=tf.tanh)
-        logits = layers.fully_connected(net, output_classes, activation_fn=None)
+        logits, targets = doc2vec_prediction_model(input_vectors, output_label, batch_size,
+                                                   is_training=True, embedding_size=embedding_size,
+                                                   output_classes=output_classes)
 
         self.prediction = tf.nn.softmax(logits)
 

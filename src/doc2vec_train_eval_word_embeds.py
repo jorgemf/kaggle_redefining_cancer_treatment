@@ -3,12 +3,12 @@ import csv
 import time
 from datetime import timedelta
 import shutil
-from tensorflow.python.training import training_util
+import sys
 from tensorflow.contrib import layers
 from . import trainer
 from .doc2vec_train_word_embeds import Doc2VecDataset
 from .text_classification_train import _load_embeddings
-from .configuration import *
+from doc2vec_eval_doc_prediction import *
 
 
 class Doc2VecTrainerEval(trainer.Trainer):
@@ -17,10 +17,10 @@ class Doc2VecTrainerEval(trainer.Trainer):
     more details.
     """
 
-    def __init__(self, dataset):
+    def __init__(self, dataset, log_dir=DIR_D2V_EVAL_LOGDIR):
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        super(Doc2VecTrainerEval, self).__init__(DIR_D2V_EVAL_LOGDIR, dataset=dataset,
+        super(Doc2VecTrainerEval, self).__init__(log_dir, dataset=dataset,
                                                  monitored_training_session_config=config,
                                                  log_step_count_steps=1000,
                                                  save_summaries_steps=1000)
@@ -96,8 +96,9 @@ class Doc2VecTrainerEval(trainer.Trainer):
                 m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}'
                 print(m.format(step, loss, lr, elapsed_time))
                 current_time = time.time()
-                embeddings_file = 'doc_eval_embeddings_{}_{}'.format(VOCABULARY_SIZE,
-                                                                     EMBEDDINGS_SIZE)
+                embeddings_file = 'doc_eval_embeddings_{}_{}_{}'.format(self.dataset.type,
+                                                                        VOCABULARY_SIZE,
+                                                                        EMBEDDINGS_SIZE)
                 embeddings_filepath = os.path.join(DIR_DATA_DOC2VEC, embeddings_file)
                 if not os.path.exists(embeddings_filepath):
                     self.save_embeddings(self.embeddings_docs)
@@ -130,7 +131,23 @@ class Doc2VecTrainerEval(trainer.Trainer):
 
 
 if __name__ == '__main__':
-    # start the training
-    trainer = Doc2VecTrainerEval(dataset=Doc2VecDataset(type='test'))
-    trainer.run(epochs=D2V_EPOCHS, batch_size=D2V_BATCH_SIZE)
-    # TODO match eval docs with train docs
+    if len(sys.argv) > 1 and sys.argv[1] == 'train_val':
+        # start the training for eval
+        trainer = Doc2VecTrainerEval(dataset=Doc2VecDataset(type='val'),
+                                     log_dir=os.path.join(DIR_D2V_EVAL_LOGDIR, 'val'))
+        trainer.run(epochs=D2V_EPOCHS, batch_size=D2V_BATCH_SIZE)
+    elif len(sys.argv) > 1 and sys.argv[1] == 'train_test':
+        # start the training for second stage dataset
+        trainer = Doc2VecTrainerEval(dataset=Doc2VecDataset(type='stage2_test'),
+                                     log_dir=os.path.join(DIR_D2V_EVAL_LOGDIR, 'test'))
+        trainer.run(epochs=D2V_EPOCHS, batch_size=D2V_BATCH_SIZE)
+    elif len(sys.argv) > 1 and sys.argv[1] == 'val':
+        # get validation error
+        evaluator = DocPredictionEval(dataset=Doc2VecDataset(type='val'),
+                                      log_dir=os.path.join(DIR_D2V_EVAL_LOGDIR, 'val'))
+        evaluator.run()
+    elif len(sys.argv) > 1 and sys.argv[1] == 'test':
+        # get validation error
+        evaluator = DocPredictionEval(dataset=Doc2VecDataset(type='stage2_test'),
+                                      log_dir=os.path.join(DIR_D2V_EVAL_LOGDIR, 'test'))
+        evaluator.run()
