@@ -8,7 +8,8 @@ from tensorflow.contrib import layers
 from . import trainer
 from .doc2vec_train_word_embeds import Doc2VecDataset
 from .text_classification_train import _load_embeddings
-from doc2vec_eval_doc_prediction import *
+from tensorflow.python.training import training_util
+from .configuration import *
 
 
 class Doc2VecTrainerEval(trainer.Trainer):
@@ -120,7 +121,8 @@ class Doc2VecTrainerEval(trainer.Trainer):
 
     def save_embeddings(self, doc_embeddings):
         print('Saving embeddings in text format...')
-        embeddings_file = 'doc_eval_embeddings_{}_{}'.format(VOCABULARY_SIZE, EMBEDDINGS_SIZE)
+        embeddings_file = 'doc_eval_embeddings_{}_{}_{}'.format(self.dataset.type,
+                                                                VOCABULARY_SIZE, EMBEDDINGS_SIZE)
         embeddings_filepath = os.path.join(DIR_DATA_DOC2VEC, embeddings_file)
         with open(embeddings_filepath, 'w') as f:
             writer = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -141,13 +143,3 @@ if __name__ == '__main__':
         trainer = Doc2VecTrainerEval(dataset=Doc2VecDataset(type='stage2_test'),
                                      log_dir=os.path.join(DIR_D2V_EVAL_LOGDIR, 'test'))
         trainer.run(epochs=D2V_EPOCHS, batch_size=D2V_BATCH_SIZE)
-    elif len(sys.argv) > 1 and sys.argv[1] == 'val':
-        # get validation error
-        evaluator = DocPredictionEval(dataset=Doc2VecDataset(type='val'),
-                                      log_dir=os.path.join(DIR_D2V_EVAL_LOGDIR, 'val'))
-        evaluator.run()
-    elif len(sys.argv) > 1 and sys.argv[1] == 'test':
-        # get validation error
-        evaluator = DocPredictionEval(dataset=Doc2VecDataset(type='stage2_test'),
-                                      log_dir=os.path.join(DIR_D2V_EVAL_LOGDIR, 'test'))
-        evaluator.run()
