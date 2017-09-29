@@ -115,8 +115,7 @@ class TextClassificationTest(evaluator.Evaluator):
         self.loss = self.text_classification_model.loss(targets, outputs)
         tf.summary.scalar('loss', self.loss)
         # metrics
-        self.metrics = metrics.single_label(outputs['prediction'], tf.squeeze(targets, axis=1),
-                                            moving_average=False)
+        self.metrics = metrics.single_label(outputs['prediction'], targets, moving_average=False)
         return self.metrics
 
     def create_graph(self, dataset_tensor, batch_size):
@@ -235,7 +234,7 @@ def main(model, name, sentence_split=False):
         evaluator.run()
     else:
         # training
-        task_spec = get_task_spec(with_evaluator=True)
+        task_spec = get_task_spec(with_evaluator=False)
         if task_spec.join_if_ps():
             # join if it is a parameters server and do nothing else
             return

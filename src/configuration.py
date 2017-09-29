@@ -61,7 +61,7 @@ D2V_DOC_LEARNING_RATE_DECAY_STEPS = 5000  # steps to decay the learning rate
 
 TD_DATA_SENTENCE_REMOVE_PERCENTAGE = 0.05  # ratio of sentences to delete from the samples
 TC_EPOCHS = 100  # iterations over the whole dataset
-TC_BATCH_SIZE = 16  # batch size for the training
+TC_BATCH_SIZE = 12  # batch size for the training
 TC_MODEL_HIDDEN = 200  # hidden GRUCells for the model
 TC_MODEL_LAYERS = 3  # number of layers of the model
 TC_MODEL_DROPOUT = 0.8  # dropout during training in the model
