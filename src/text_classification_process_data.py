@@ -156,6 +156,8 @@ def data_stats(train_set, test_set):
     # Longest sentence is 4048
 
 if __name__ == '__main__':
+    import logging
+    logging.getLogger().setLevel(logging.INFO)
     print('Generate text data augmentation for text classification model...')
     train_set = load_csv_dataset('train_set_numbers_parsed')
     test_set = load_csv_dataset('test_set_numbers_parsed')

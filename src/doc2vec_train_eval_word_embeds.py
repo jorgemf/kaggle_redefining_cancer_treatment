@@ -133,6 +133,8 @@ class Doc2VecTrainerEval(trainer.Trainer):
 
 
 if __name__ == '__main__':
+    import logging
+    logging.getLogger().setLevel(logging.INFO)
     if len(sys.argv) > 1 and sys.argv[1] == 'train_val':
         # start the training for eval
         trainer = Doc2VecTrainerEval(dataset=Doc2VecDataset(type='val'),

@@ -3,6 +3,7 @@ import csv
 import time
 from datetime import timedelta
 import sys
+import numpy as np
 from tensorflow.python.training import training_util
 from tensorflow.contrib import slim
 from tensorflow.python.ops import variables as tf_variables
@@ -60,8 +61,7 @@ class TextClassificationTrainer(trainer.Trainer):
             tf.summary.scalar('learning_rate', self.learning_rate)
 
         # metrics
-        self.metrics = metrics.single_label(outputs['prediction'],
-                                            tf.reshape(targets, [-1, output_classes]))
+        self.metrics = metrics.single_label(outputs['prediction'], targets)
 
         # saver to save the model
         self.saver = tf.train.Saver()
@@ -124,6 +124,32 @@ class TextClassificationTest(evaluator.Evaluator):
         graph_data = self.model(input_texts, expected_labels, batch_size)
         return graph_data
 
+    def step(self, session, graph_data, summary_op):
+        return super(TextClassificationTest, self).step(session, graph_data, summary_op)
+
+    def after_create_session(self, session, coord):
+        # checkpoints_file = os.path.join(self.checkpoints_dir, 'checkpoint')
+        # alt_checkpoints_dir = '{}_tp'.format(self.checkpoints_dir)
+        # import glob
+        # files = glob.glob('{}/model.ckpt-*.data-00000-of-00001'.format(alt_checkpoints_dir))
+        # chk_step = 0
+        # for f in files:
+        #     num = f.split('model.ckpt-')[1].split('.')[0]
+        #     num = int(num)
+        #     if chk_step == 0 or num < chk_step:
+        #         chk_step = num
+        # if chk_step != 0:
+        #     for f in ['model.ckpt-{}.data-00000-of-00001', 'model.ckpt-{}.index', 'model.ckpt-{}.meta']:
+        #         f = f.format(chk_step)
+        #         os.rename(os.path.join(alt_checkpoints_dir, f), os.path.join(self.checkpoints_dir, f))
+        #     with open(checkpoints_file, 'wb') as f:
+        #         f.write('model_checkpoint_path: "./model.ckpt-{}"\n'.format(chk_step))
+        #         f.write('all_model_checkpoint_paths: "./model.ckpt-{}"\n'.format(chk_step))
+        super(TextClassificationTest, self).after_create_session(session, coord)
+        # with open(checkpoints_file, 'wb') as f:
+        #     f.write('model_checkpoint_path: "./model.ckpt-"\n')
+        #     f.write('all_model_checkpoint_paths: "./model.ckpt-"\n')
+
 
 class TextClassificationEval(evaluator.Evaluator):
     """Evaluator for text classification"""
@@ -162,10 +188,14 @@ class TextClassificationEval(evaluator.Evaluator):
 
     def step(self, session, graph_data, summary_op):
         step, predictions = session.run([self.global_step, self.outputs['prediction']])
-        print('{},{}'.format(step, ','.join([str(x) for x in predictions[0]])))
+        predictions = predictions[0]
+        predictions = [p + 0.02 for p in predictions] # penalize less the mistakes
+        sum = np.sum(predictions)
+        predictions = [p/sum for p in predictions]
+        print('{},{}'.format(step, ','.join(['{:.2f}'.format(x) for x in predictions])))
         return None
 
-
+import logging
 def main(model, name, sentence_split=False):
     """
     Main method to execute the text_classification models
@@ -174,6 +204,7 @@ def main(model, name, sentence_split=False):
     :param bool sentence_split: whether to split the dataset in sentneces or not,
     only used for hatt model
     """
+    logging.getLogger().setLevel(logging.INFO)
     log_dir = '{}_{}'.format(DIR_TC_LOGDIR, name)
     if len(sys.argv) > 1 and sys.argv[1] == 'test':
         # execute the test with the train dataset

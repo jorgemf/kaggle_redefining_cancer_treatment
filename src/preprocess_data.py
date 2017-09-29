@@ -483,6 +483,8 @@ def tokenize_documents(documents):
 
 
 if __name__ == '__main__':
+    import logging
+    logging.getLogger().setLevel(logging.INFO)
     if not os.path.exists(DIR_GENERATED_DATA):
         os.makedirs(DIR_GENERATED_DATA)
     if not os.path.exists(DIR_DATA_WORD2VEC):

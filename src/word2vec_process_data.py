@@ -127,6 +127,8 @@ def load_or_create_dataset_word2vec(filename, text_samples, vocabulary_size=VOCA
 
 
 if __name__ == '__main__':
+    import logging
+    logging.getLogger().setLevel(logging.INFO)
     print('Generate text for Word2Vec model... (without using test data)')
     train_set = load_csv_dataset('train_set_numbers_parsed')
     genes_articles = load_csv_wikipedia_gen('wikipedia_mutations_parsed')

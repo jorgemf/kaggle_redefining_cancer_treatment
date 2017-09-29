@@ -199,6 +199,8 @@ class Doc2VecTrainer(trainer.Trainer):
 
 
 if __name__ == '__main__':
+    import logging
+    logging.getLogger().setLevel(logging.INFO)
     # start the training
     trainer = Doc2VecTrainer(dataset=Doc2VecDataset())
     trainer.run(epochs=D2V_EPOCHS, batch_size=D2V_BATCH_SIZE)

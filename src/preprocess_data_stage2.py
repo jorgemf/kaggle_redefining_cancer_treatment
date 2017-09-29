@@ -18,6 +18,8 @@ def _filter_clear_val_set(val_set):
     return val_set_filter
 
 if __name__ == '__main__':
+    import logging
+    logging.getLogger().setLevel(logging.INFO)
     print('Load raw data...')
     train_set = load_raw_dataset('training_text', 'training_variants', ignore_empty=True)
     val_set = load_raw_dataset('test_text', 'test_variants')

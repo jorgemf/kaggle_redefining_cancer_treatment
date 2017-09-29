@@ -14,15 +14,14 @@ class TextClassificationDataset(TFDataSet):
         """
         :param str type: type of set, either 'train' or 'test'
         """
+        data_files = os.path.join(DIR_DATA_TEXT_CLASSIFICATION, '{}_set'.format(type))
         if type == 'train' or type == 'val':
-            data_files = os.path.join(DIR_DATA_TEXT_CLASSIFICATION, 'train_set')
             if sentence_split:
                 padded_shape = ([None, MAX_WORDS_IN_SENTENCE], [1])
             else:
                 padded_shape = ([None], [1])
             padded_values = (-1, -1)
         elif type == 'test' or type == 'stage2_test':
-            data_files = os.path.join(DIR_DATA_TEXT_CLASSIFICATION, '{}_set'.format(type))
             if sentence_split:
                 padded_shape = [None, MAX_WORDS_IN_SENTENCE]
             else:

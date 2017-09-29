@@ -7,6 +7,7 @@ from tensorflow.contrib import layers
 from . import trainer, metrics
 from .tf_dataset_generator import TFDataSetGenerator
 from .configuration import *
+import random
 
 
 class DocPredictionDataset(TFDataSetGenerator):
@@ -16,7 +17,8 @@ class DocPredictionDataset(TFDataSetGenerator):
 
     def __init__(self, type='train',
                  vocabulary_size=VOCABULARY_SIZE,
-                 embedding_size=EMBEDDINGS_SIZE):
+                 embedding_size=EMBEDDINGS_SIZE,
+                 balance_classes=False):
         self.type = type
         if type != 'train' and type != 'test' and type != 'stage2_test' and type != 'val':
             raise ValueError('Type must be train, test, stage2_test or val')
@@ -25,7 +27,7 @@ class DocPredictionDataset(TFDataSetGenerator):
             embeds_filename = 'doc_embeddings_{}_{}'.format(vocabulary_size, embedding_size)
         else:
             embeds_filename = 'doc_eval_embeddings_{}_{}_{}'.format(type, vocabulary_size,
-                                                               embedding_size)
+                                                                    embedding_size)
 
         self.docs_file = os.path.join(DIR_DATA_DOC2VEC, docs_filename)
         self.embeds_file = os.path.join(DIR_DATA_DOC2VEC, embeds_filename)
@@ -41,12 +43,38 @@ class DocPredictionDataset(TFDataSetGenerator):
             self.embeds = [l.split(',') for l in f.readlines()]
             for i, line in enumerate(self.embeds):
                 self.embeds[i] = [float(e) for e in line]
+        lab_count = {}
+        for l in self.doc_labels:
+            if l not in lab_count:
+                lab_count[l] = 0
+            lab_count[l] += 1
+        print lab_count
+        if type == 'train' and balance_classes:
+            self._balance_classes()
 
         super(DocPredictionDataset, self).__init__(name=type,
                                                    generator=self._generator,
                                                    output_types=output_types,
                                                    min_queue_examples=1000,
                                                    shuffle_size=2000)
+
+    def _balance_classes(self):
+        dataset = zip(self.doc_labels, self.embeds)
+        classes_group = {}
+        for d in dataset:
+            if d[0] not in classes_group:
+                classes_group[d[0]] = []
+            classes_group[d[0]].append(d)
+        max_in_class = np.max([len(v) for v in classes_group.values()]) * 2
+        new_dataset = []
+        for key, class_list in classes_group.iteritems():
+            random.shuffle(class_list)
+            for index in range(max_in_class - len(class_list)):
+                class_list.append(class_list[index])
+            new_dataset.extend(class_list)
+
+        random.shuffle(new_dataset)
+        self.doc_labels, self.embeds = zip(*new_dataset)
 
     def _generator(self):
         for i in range(len(self.embeds)):
@@ -157,6 +185,8 @@ class DocPredictionTrainer(trainer.Trainer):
 
 
 if __name__ == '__main__':
+    import logging
+    logging.getLogger().setLevel(logging.INFO)
     # start the training
     trainer = DocPredictionTrainer(dataset=DocPredictionDataset())
     trainer.run(epochs=D2V_DOC_EPOCHS, batch_size=D2V_DOC_BATCH_SIZE)

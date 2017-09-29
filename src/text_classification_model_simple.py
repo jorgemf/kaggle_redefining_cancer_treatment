@@ -104,6 +104,7 @@ class ModelSimple(object):
         :return tf.Tensor: a tensorflow tensor
         """
         targets = tf.one_hot(labels, axis=-1, depth=output_classes, on_value=1.0, off_value=0.0)
+        targets = tf.squeeze(targets, axis=1)
         return targets
 
     def loss(self, targets, graph_data):
@@ -135,19 +136,20 @@ class ModelSimple(object):
                                                    learning_rate_decay,
                                                    staircase=True, name='learning_rate')
         # optimizer and gradient clipping
-        optimizer = tf.train.RMSPropOptimizer(learning_rate)
-        gradients, variables = zip(*optimizer.compute_gradients(loss))
-        with ops.name_scope('summarize_grads'):
-            for grad, var in zip(gradients, variables):
-                if grad is not None:
-                    if isinstance(grad, ops.IndexedSlices):
-                        grad_values = grad.values
-                    else:
-                        grad_values = grad
-                    tf.summary.histogram(var.op.name + '/gradient', grad_values)
-        gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
-        optimizer = optimizer.apply_gradients(zip(gradients, variables),
-                                              global_step=global_step)
+        # optimizer = tf.train.RMSPropOptimizer(learning_rate)
+        # gradients, variables = zip(*optimizer.compute_gradients(loss))
+        # with ops.name_scope('summarize_grads'):
+        #     for grad, var in zip(gradients, variables):
+        #         if grad is not None:
+        #             if isinstance(grad, ops.IndexedSlices):
+        #                 grad_values = grad.values
+        #             else:
+        #                 grad_values = grad
+        #             tf.summary.histogram(var.op.name + '/gradient', grad_values)
+        # gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
+        # optimizer = optimizer.apply_gradients(zip(gradients, variables),
+        #                                       global_step=global_step)
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
         return optimizer, learning_rate
 
 

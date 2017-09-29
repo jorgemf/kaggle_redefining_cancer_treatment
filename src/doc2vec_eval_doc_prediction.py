@@ -97,7 +97,8 @@ class DocPredictionInference(evaluator.Evaluator):
 
 
 if __name__ == '__main__':
-
+    import logging
+    logging.getLogger().setLevel(logging.INFO)
     if len(sys.argv) > 1 and sys.argv[1] == 'val':
         # get validation error
         evaluator = DocPredictionEval(dataset=DocPredictionDataset(type='val'),
@@ -107,4 +108,9 @@ if __name__ == '__main__':
         # get validation error
         evaluator = DocPredictionInference(dataset=DocPredictionDataset(type='stage2_test'),
                                            log_dir=os.path.join(DIR_D2V_DOC_LOGDIR))
+        evaluator.run()
+    elif len(sys.argv) > 1 and sys.argv[1] == 'train':
+        # get validation error
+        evaluator = DocPredictionEval(dataset=DocPredictionDataset(type='train'),
+                                      log_dir=os.path.join(DIR_D2V_DOC_LOGDIR))
         evaluator.run()

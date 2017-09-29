@@ -211,6 +211,8 @@ class Word2VecTrainer(trainer.Trainer):
 
 
 if __name__ == '__main__':
+    import logging
+    logging.getLogger().setLevel(logging.INFO)
     # start the training
     trainer = Word2VecTrainer(dataset=Word2VecDataset())
     trainer.run(epochs=W2V_EPOCHS, batch_size=W2V_BATCH_SIZE)

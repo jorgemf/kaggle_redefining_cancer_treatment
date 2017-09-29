@@ -59,6 +59,7 @@ class Evaluator(session_run_hook.SessionRunHook):
                             self.summary = self.step(s, graph_data, self.summary_op)
                     except OutOfRangeError:
                         pass
+                logging.info('Evaluation finished')
             if not self.infinite_loop:
                 break
 
