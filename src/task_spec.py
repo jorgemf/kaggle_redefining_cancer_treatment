@@ -46,10 +46,11 @@ class TaskSpec(object):
 
     def join_if_ps(self):
         if self.is_ps():
-            server = tf.train.Server(self.cluster_spec,
-                                     job_name=self.job_name,
-                                     task_index=self.index)
-            server.join()
+            while True:
+                server = tf.train.Server(self.cluster_spec,
+                                         job_name=self.job_name,
+                                         task_index=self.index)
+                server.join()
             return True
         return False
 
