@@ -112,7 +112,12 @@ class TextClassificationTest(evaluator.Evaluator):
                                                            training=False)
         # loss
         targets = self.text_classification_model.targets(expected_labels, output_classes)
-        self.loss = self.text_classification_model.loss(targets, outputs)
+        loss = self.text_classification_model.loss(targets, outputs)
+        self.accumulated_loss = tf.Variable(0.0, dtype=tf.float32, name='accumulated_loss',
+                                            trainable=False)
+        self.accumulated_loss = tf.assign_add(self.accumulated_loss, tf.reduce_sum(loss))
+        samples = tf.cast(self.global_step, dtype=tf.float32) * batch_size
+        self.loss = self.accumulated_loss / samples
         tf.summary.scalar('loss', self.loss)
         # metrics
         self.metrics = metrics.single_label(outputs['prediction'], targets, moving_average=False)
@@ -124,7 +129,16 @@ class TextClassificationTest(evaluator.Evaluator):
         return graph_data
 
     def step(self, session, graph_data, summary_op):
-        return super(TextClassificationTest, self).step(session, graph_data, summary_op)
+        summary, self.loss_result, self.metrics_results = session.run([summary_op, self.loss, self.metrics])
+        return summary
+
+    def end(self, session):
+        super(TextClassificationTest, self).end(session)
+        chk_step = int(self.lastest_checkpoint.split('-')[-1])
+        m = 'step: {}  loss: {:0.4f}  precision: {}  recall: {}  accuracy: {}'
+        logging.info(m.format(chk_step, self.loss_result, self.metrics_results['precision'],
+                              self.metrics_results['recall'], self.metrics_results['accuracy']))
+
 
     def after_create_session(self, session, coord):
         # checkpoints_file = os.path.join(self.checkpoints_dir, 'checkpoint')
