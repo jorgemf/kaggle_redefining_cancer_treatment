@@ -83,8 +83,8 @@ class TextClassificationTrainer(trainer.Trainer):
             elapsed_time = str(timedelta(seconds=time.time() - self.init_time))
             m = 'step: {}  loss: {:0.4f}  learning_rate = {:0.6f}  elapsed seconds: {}  ' \
                 'precision: {}  recall: {}  accuracy: {}'
-            print(m.format(step, loss, lr, elapsed_time,
-                           metrics['precision'], metrics['recall'], metrics['accuracy']))
+            logging.info(m.format(step, loss, lr, elapsed_time,
+                                  metrics['precision'], metrics['recall'], metrics['accuracy']))
 
     def after_create_session(self, session, coord):
         self.init_time = time.time()

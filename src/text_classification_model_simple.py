@@ -149,7 +149,8 @@ class ModelSimple(object):
         # gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
         # optimizer = optimizer.apply_gradients(zip(gradients, variables),
         #                                       global_step=global_step)
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+        optimizer = optimizer.minimize(loss, global_step=global_step)
         return optimizer, learning_rate
 
 
