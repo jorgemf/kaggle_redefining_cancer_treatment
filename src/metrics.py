@@ -99,10 +99,10 @@ def _metrics(predicted_bool, real_bool, moving_average):
     tf.summary.scalar('recall', recall)
     tf.summary.scalar('fall-out', fall_out)
     tf.summary.scalar('f1-score', f1_score)
-    tf.summary.scalar('true positive', tp)
-    tf.summary.scalar('true negative', tn)
-    tf.summary.scalar('false positive', fp)
-    tf.summary.scalar('false negative', fn)
+    tf.summary.scalar('true_positive', tp)
+    tf.summary.scalar('true_negative', tn)
+    tf.summary.scalar('false_positive', fp)
+    tf.summary.scalar('false_negative', fn)
 
     return {
         'accuracy': accuracy,
