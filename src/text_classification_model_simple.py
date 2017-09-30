@@ -137,6 +137,9 @@ class ModelSimple(object):
                                                    staircase=True, name='learning_rate')
         # optimizer and gradient clipping
         # optimizer = tf.train.RMSPropOptimizer(learning_rate)
+        # optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+        optimizer = tf.train.AdamOptimizer(learning_rate)
+        optimizer = optimizer.minimize(loss, global_step=global_step)
         # gradients, variables = zip(*optimizer.compute_gradients(loss))
         # with ops.name_scope('summarize_grads'):
         #     for grad, var in zip(gradients, variables):
@@ -149,8 +152,6 @@ class ModelSimple(object):
         # gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
         # optimizer = optimizer.apply_gradients(zip(gradients, variables),
         #                                       global_step=global_step)
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate)
-        optimizer = optimizer.minimize(loss, global_step=global_step)
         return optimizer, learning_rate
 
 
