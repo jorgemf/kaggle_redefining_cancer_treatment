@@ -1,5 +1,8 @@
 import logging
 import time
+from shutil import copyfile
+import os
+import glob
 import tensorflow as tf
 from tensorflow.python.training import session_run_hook, training_util
 from tensorflow.python.framework.errors_impl import OutOfRangeError
@@ -34,6 +37,7 @@ class Evaluator(session_run_hook.SessionRunHook):
         self.dataset = dataset
         self.lastest_checkpoint = None
         self.summary_writer = tf.summary.FileWriter(output_path)
+        self.output_path = output_path
 
     def run(self, batch_size=1, epochs=1):
         while True:
@@ -110,3 +114,17 @@ class Evaluator(session_run_hook.SessionRunHook):
         """
         summary, _ = session.run([summary_op, graph_data])
         return summary
+
+    def copy_checkpoint_as_best(self, name='best_model.ckpt'):
+        """Saves the current checkpoint as the best one in the output_path"""
+        logging.info('Saving best checkpoint as {}'.format(name))
+        output_file = os.path.join(self.output_path, name)
+        data_files = '{}.data*'.format(self.lastest_checkpoint)
+        data_files_extensions = glob.glob(data_files)
+        data_files_extensions = [x.split('.')[-1] for x in data_files_extensions]
+        for extension in ['index', 'meta'] + data_files_extensions:
+            copyfile('{}.{}'.format(self.lastest_checkpoint, extension),
+                     '{}.{}'.format(output_file, extension))
+        with open(os.path.join(self.output_path, 'checkpoint'), 'wb') as f:
+            f.write('model_checkpoint_path: "{}"\n'.format(name))
+            f.write('all_model_checkpoint_paths: "{}"\n'.format(name))

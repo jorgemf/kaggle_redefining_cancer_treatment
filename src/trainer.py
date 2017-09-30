@@ -92,21 +92,18 @@ class Trainer(session_run_hook.SessionRunHook):
                 hooks.append(StopAtStepHook(num_steps=self.num_steps, last_step=self.max_steps))
 
             self.is_chief = self.task_spec.is_chief()
-            recover = True
-            while recover:
-                logging.info('Creating MonitoredTrainingSession...')
-                with tf.train.MonitoredTrainingSession(master=target, is_chief=self.is_chief,
+            logging.info('Creating MonitoredTrainingSession...')
+            with tf.train.MonitoredTrainingSession(master=target, is_chief=self.is_chief,
                         checkpoint_dir=self.log_dir, save_checkpoint_secs=self.save_checkpoint_secs,
                         save_summaries_steps=self.save_summaries_steps,
                         log_step_count_steps=self.log_step_count_steps,
                         config=self.monitored_training_session_config, hooks=hooks,
                         chief_only_hooks=chief_only_hooks) as sess:
 
-                    logging.info('Starting training...')
+                logging.info('Starting training...')
 
-                    while not sess.should_stop():
-                        self.step(sess, graph_data)
-                    recover = False
+                while not sess.should_stop():
+                    self.step(sess, graph_data)
 
     def create_graph(self, dataset_tensor, batch_size):
         """

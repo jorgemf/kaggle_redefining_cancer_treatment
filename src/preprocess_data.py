@@ -334,6 +334,7 @@ def load_or_parse_mutations_dataset(filename, dataset, genes,
     """
     if not os.path.exists(os.path.join(DIR_GENERATED_DATA, filename)):
         for datasample in dataset:
+            # text
             words = datasample.text
             parsed_words = []
             for word in words:
@@ -342,6 +343,14 @@ def load_or_parse_mutations_dataset(filename, dataset, genes,
                 else:
                     parsed_words.append(word)
             datasample.text = ' '.join(parsed_words)
+            # variations
+            parsed_variation = []
+            for word in datasample.variation.split():
+                if is_mutation(word, genes):
+                    parsed_variation.extend(split_mutation(word))
+                else:
+                    parsed_variation.append(word)
+            datasample.variation = ' '.join(parsed_variation)
         saving_fn(filename, dataset)
     return loading_fn(filename)
 

@@ -11,7 +11,6 @@ from . import trainer
 from .tf_dataset_generator import TFDataSetGenerator
 from .configuration import *
 
-
 class Doc2VecDataset(TFDataSetGenerator):
     """
     Custom dataset. We use it to feed the session.run method directly.
@@ -27,7 +26,7 @@ class Doc2VecDataset(TFDataSetGenerator):
         # pre load data in memory for the generator
         with open(self.data_file) as f:
             # read lines and skip the class
-            self._data_lines = [l.split()[1:] for l in f.readlines()]
+            self._data_lines = [l.split('||')[3].split() for l in f.readlines()]
             # skip shorter lines
             self._data_lines = [l for l in self._data_lines if len(l) > self.context_size]
             for i, line in enumerate(self._data_lines):

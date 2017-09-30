@@ -24,14 +24,14 @@ DIR_WIKIPEDIA_GENES = os.path.join(DIR_GENERATED_DATA, 'gen')
 # shared conf between word2vec and text_classification models
 
 VOCABULARY_SIZE = 40000
-EMBEDDINGS_SIZE = 100
+EMBEDDINGS_SIZE = 300 # TODO change to 100 for TC
 MAX_WORDS = 10000  # 40000  # maximum number of words in the document
 MAX_SENTENCES = 500  # 1000  # maximum number of sentences in the document
 MAX_WORDS_IN_SENTENCE = 35  # 60  # maximum number of words per sentence in the document
 
 # word2vec
 
-W2V_EPOCHS = 5  # iterations over the whole dataset
+W2V_EPOCHS = 10  # iterations over the whole dataset
 W2V_BATCH_SIZE = 128  # batch size for the training
 W2V_WINDOW_ADJACENT_WORDS = 1  # adjacent words to be added to the context
 W2V_CLOSE_WORDS_SIZE = 2  # close words (non-adjacent) to be added to the context
@@ -43,7 +43,7 @@ W2V_LEARNING_RATE_DECAY_STEPS = 100000  # steps to decay the learning rate
 
 # doc2vec
 
-D2V_EPOCHS = 5  # iterations over the whole dataset
+D2V_EPOCHS = 10  # iterations over the whole dataset
 D2V_BATCH_SIZE = 128  # batch size for the training
 D2V_CONTEXT_SIZE = 5  # size of the context to predict the word
 D2V_NEGATIVE_NUM_SAMPLES = 64  # number of negative examples to sample for training
@@ -51,11 +51,11 @@ D2V_LEARNING_RATE_INITIAL = 0.01  # initial learning rate for gradient descent
 D2V_LEARNING_RATE_DECAY = 0.9  # decay of learning rate
 D2V_LEARNING_RATE_DECAY_STEPS = 100000  # steps to decay the learning rate
 
-D2V_DOC_EPOCHS = 400  # iterations over the whole dataset
+D2V_DOC_EPOCHS = 10000  # iterations over the whole dataset
 D2V_DOC_BATCH_SIZE = 128  # batch size for the training
 D2V_DOC_LEARNING_RATE_INITIAL = 0.01  # initial learning rate for gradient descent
-D2V_DOC_LEARNING_RATE_DECAY = 0.9  # decay of learning rate
-D2V_DOC_LEARNING_RATE_DECAY_STEPS = 5000  # steps to decay the learning rate
+D2V_DOC_LEARNING_RATE_DECAY = 0.95  # decay of learning rate
+D2V_DOC_LEARNING_RATE_DECAY_STEPS = 2000  # steps to decay the learning rate
 
 # text classification
 
