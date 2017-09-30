@@ -115,13 +115,14 @@ class TextClassificationTest(evaluator.Evaluator):
         loss = self.text_classification_model.loss(targets, outputs)
         self.accumulated_loss = tf.Variable(0.0, dtype=tf.float32, name='accumulated_loss',
                                             trainable=False)
-        self.accumulated_loss = tf.assign_add(self.accumulated_loss, tf.reduce_sum(loss))
-        samples = tf.cast(self.global_step, dtype=tf.float32) * batch_size
-        self.loss = self.accumulated_loss / samples
+        self.accumulated_loss = tf.assign_add(self.accumulated_loss, loss)
+        step = tf.Variable(0, dtype=tf.int32, name='eval_step', trainable=False)
+        step_increase = tf.assign_add(step, 1)
+        self.loss = self.accumulated_loss / tf.cast(step_increase, dtype=tf.float32)
         tf.summary.scalar('loss', self.loss)
         # metrics
         self.metrics = metrics.single_label(outputs['prediction'], targets, moving_average=False)
-        return self.metrics
+        return None
 
     def create_graph(self, dataset_tensor, batch_size):
         input_texts, expected_labels = dataset_tensor
@@ -129,7 +130,8 @@ class TextClassificationTest(evaluator.Evaluator):
         return graph_data
 
     def step(self, session, graph_data, summary_op):
-        summary, self.loss_result, self.metrics_results = session.run([summary_op, self.loss, self.metrics])
+        summary, self.loss_result, self.metrics_results = \
+            session.run([summary_op, self.loss, self.metrics])
         return summary
 
     def end(self, session):
@@ -138,7 +140,6 @@ class TextClassificationTest(evaluator.Evaluator):
         m = 'step: {}  loss: {:0.4f}  precision: {}  recall: {}  accuracy: {}'
         logging.info(m.format(chk_step, self.loss_result, self.metrics_results['precision'],
                               self.metrics_results['recall'], self.metrics_results['accuracy']))
-
 
     def after_create_session(self, session, coord):
         # checkpoints_file = os.path.join(self.checkpoints_dir, 'checkpoint')
@@ -202,13 +203,16 @@ class TextClassificationEval(evaluator.Evaluator):
     def step(self, session, graph_data, summary_op):
         step, predictions = session.run([self.global_step, self.outputs['prediction']])
         predictions = predictions[0]
-        predictions = [p + 0.02 for p in predictions] # penalize less the mistakes
+        predictions = [p + 0.02 for p in predictions]  # penalize less the mistakes
         sum = np.sum(predictions)
-        predictions = [p/sum for p in predictions]
+        predictions = [p / sum for p in predictions]
         print('{},{}'.format(step, ','.join(['{:.2f}'.format(x) for x in predictions])))
         return None
 
+
 import logging
+
+
 def main(model, name, sentence_split=False):
     """
     Main method to execute the text_classification models
