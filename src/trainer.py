@@ -36,7 +36,7 @@ class Trainer(session_run_hook.SessionRunHook):
         self.max_time = max_time
         self.num_steps = num_steps
         self.max_steps = max_steps
-        logging.info('Log dir: {}', self.log_dir)
+        logging.info('Log dir: {}'.format(self.log_dir))
         if task_spec is None:
             self.task_spec = get_task_spec()
         else:
