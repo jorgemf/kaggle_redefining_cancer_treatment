@@ -47,8 +47,11 @@ class ModelHATT(ModelSimple):
                                                    is_training=training)
 
         # classifier
-        logits = self.model_fully_connected(sentence_level_output, gene, variation,
-                                            num_output_classes, dropout, training)
+        net = tf.concat([sentence_level_output, gene, variation], axis=1)
+        net = layers.fully_connected(net, 128, activation_fn=tf.nn.relu)
+        logits = layers.fully_connected(net, num_output_classes, activation_fn=None)
+        # logits = self.model_fully_connected(sentence_level_output, gene, variation,
+        #                                     num_output_classes, dropout, training)
         # gene and variant are used in the attention function
         # output = layers.dropout(sentence_level_output, keep_prob=dropout, is_training=training)
         # net = layers.fully_connected(output, 128, activation_fn=tf.nn.relu)
