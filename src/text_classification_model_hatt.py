@@ -138,9 +138,6 @@ class ModelHATT(ModelSimple):
                                                    dtype=tf.float32)
         input_projection = layers.fully_connected(inputs, output_size,
                                                   activation_fn=activation_fn)
-        attention_context_vector = tf.expand_dims(attention_context_vector, 1)
-        if len(inputs_shape) == 4:
-            attention_context_vector = tf.expand_dims(attention_context_vector, 1)
         vector_attn = input_projection * attention_context_vector
         vector_attn = tf.reduce_sum(vector_attn, axis=-1, keep_dims=True)
         attention_weights = tf.nn.softmax(vector_attn, dim=1)
