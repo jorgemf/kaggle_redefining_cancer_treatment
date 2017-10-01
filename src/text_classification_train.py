@@ -153,7 +153,7 @@ class TextClassificationTest(evaluator.Evaluator):
         # checkpoints_file = os.path.join(self.checkpoints_dir, 'checkpoint')
         # alt_checkpoints_dir = '{}_tp'.format(self.checkpoints_dir)
         # import glob
-        # files = glob.glob('{}/model.ckpt-*.data-00000-of-00001'.format(alt_checkpoints_dir))
+        # files = glob.glob('{}/model.ckpt-*.data-*'.format(alt_checkpoints_dir))
         # chk_step = 0
         # for f in files:
         #     num = f.split('model.ckpt-')[1].split('.')[0]
@@ -161,7 +161,9 @@ class TextClassificationTest(evaluator.Evaluator):
         #     if chk_step == 0 or num < chk_step:
         #         chk_step = num
         # if chk_step != 0:
-        #     for f in ['model.ckpt-{}.data-00000-of-00001', 'model.ckpt-{}.index', 'model.ckpt-{}.meta']:
+        #     ckpt_files = glob.glob('{}/model.ckpt-{}.data-*'.format(alt_checkpoints_dir, chk_step))
+        #     ckpt_files = [x.split('/')[-1] for x in ckpt_files]
+        #     for f in ckpt_files + ['model.ckpt-{}.index', 'model.ckpt-{}.meta']:
         #         f = f.format(chk_step)
         #         os.rename(os.path.join(alt_checkpoints_dir, f), os.path.join(self.checkpoints_dir, f))
         #     with open(checkpoints_file, 'wb') as f:
