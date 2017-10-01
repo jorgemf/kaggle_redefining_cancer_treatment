@@ -32,11 +32,14 @@ class TextClassificationTrainer(trainer.Trainer):
 
     def __init__(self, dataset, text_classification_model, log_dir=DIR_TC_LOGDIR, task_spec=None):
         self.text_classification_model = text_classification_model
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
         super(TextClassificationTrainer, self).__init__(log_dir=log_dir, dataset=dataset,
-                                                        task_spec=task_spec)
+                                                        task_spec=task_spec,
+                                                        monitored_training_session_config=config)
 
-    def model(self, input_texts, expected_labels, batch_size, vocabulary_size=VOCABULARY_SIZE,
-              embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
+    def model(self, input_texts, gene, variation, expected_labels, batch_size,
+              vocabulary_size=VOCABULARY_SIZE, embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
         # embeddings
         embeddings = _load_embeddings(vocabulary_size, embeddings_size)
 
@@ -45,7 +48,8 @@ class TextClassificationTrainer(trainer.Trainer):
 
         # model
         with slim.arg_scope(self.text_classification_model.model_arg_scope()):
-            outputs = self.text_classification_model.model(input_texts, output_classes,
+            outputs = self.text_classification_model.model(input_texts, gene, variation,
+                                                           output_classes,
                                                            embeddings=embeddings,
                                                            batch_size=batch_size)
 
@@ -71,8 +75,8 @@ class TextClassificationTrainer(trainer.Trainer):
         return None
 
     def create_graph(self, dataset_tensor, batch_size):
-        input_texts, expected_labels = dataset_tensor
-        return self.model(input_texts, expected_labels, batch_size)
+        input_texts, gene, variation, expected_labels = dataset_tensor
+        return self.model(input_texts, gene, variation, expected_labels, batch_size)
 
     def step(self, session, graph_data):
         lr, _, loss, step, metrics = \
@@ -95,18 +99,22 @@ class TextClassificationTest(evaluator.Evaluator):
     """Evaluator for distributed training"""
 
     def __init__(self, dataset, text_classification_model, output_path, log_dir=DIR_TC_LOGDIR):
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
         super(TextClassificationTest, self).__init__(checkpoints_dir=log_dir, dataset=dataset,
-                                                     output_path=output_path)
+                                                     output_path=output_path,
+                                                     singular_monitored_session_config=config)
         self.text_classification_model = text_classification_model
         self.eval_writer = tf.summary.FileWriter(log_dir)
 
-    def model(self, input_texts, expected_labels, batch_size, vocabulary_size=VOCABULARY_SIZE,
-              embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
+    def model(self, input_texts, gene, variation, expected_labels, batch_size,
+              vocabulary_size=VOCABULARY_SIZE, embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
         # embeddings
         embeddings = _load_embeddings(vocabulary_size, embeddings_size)
         # model
         with slim.arg_scope(self.text_classification_model.model_arg_scope()):
-            outputs = self.text_classification_model.model(input_texts, output_classes,
+            outputs = self.text_classification_model.model(input_texts, gene, variation,
+                                                           output_classes,
                                                            embeddings=embeddings,
                                                            batch_size=batch_size,
                                                            training=False)
@@ -125,8 +133,8 @@ class TextClassificationTest(evaluator.Evaluator):
         return None
 
     def create_graph(self, dataset_tensor, batch_size):
-        input_texts, expected_labels = dataset_tensor
-        graph_data = self.model(input_texts, expected_labels, batch_size)
+        input_texts, gene, variation, expected_labels = dataset_tensor
+        graph_data = self.model(input_texts, gene, variation, expected_labels, batch_size)
         return graph_data
 
     def step(self, session, graph_data, summary_op):
@@ -169,13 +177,16 @@ class TextClassificationEval(evaluator.Evaluator):
     """Evaluator for text classification"""
 
     def __init__(self, dataset, text_classification_model, output_path, log_dir=DIR_TC_LOGDIR):
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
         super(TextClassificationEval, self).__init__(checkpoints_dir=log_dir,
                                                      output_path=output_path,
-                                                     infinite_loop=False)
+                                                     infinite_loop=False,
+                                                     singular_monitored_session_config=config)
         self.dataset = dataset
         self.text_classification_model = text_classification_model
 
-    def model(self, input_texts, batch_size, vocabulary_size=VOCABULARY_SIZE,
+    def model(self, input_texts, gene, variation, batch_size, vocabulary_size=VOCABULARY_SIZE,
               embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
         # embeddings
         embeddings = _load_embeddings(vocabulary_size, embeddings_size)
@@ -185,7 +196,8 @@ class TextClassificationEval(evaluator.Evaluator):
         # model
         with tf.control_dependencies([self.global_step]):
             with slim.arg_scope(self.text_classification_model.model_arg_scope()):
-                self.outputs = self.text_classification_model.model(input_texts, output_classes,
+                self.outputs = self.text_classification_model.model(input_texts, gene, variation,
+                                                                    output_classes,
                                                                     embeddings=embeddings,
                                                                     batch_size=batch_size,
                                                                     training=False)
@@ -194,7 +206,8 @@ class TextClassificationEval(evaluator.Evaluator):
         return self.outputs
 
     def create_graph(self, dataset_tensor, batch_size):
-        return self.model(dataset_tensor, batch_size)
+        input_text, gene, variation = dataset_tensor
+        return self.model(input_text, gene, variation, batch_size)
 
     def after_create_session(self, session, coord):
         super(TextClassificationEval, self).after_create_session(session, coord)
@@ -203,17 +216,17 @@ class TextClassificationEval(evaluator.Evaluator):
     def step(self, session, graph_data, summary_op):
         step, predictions = session.run([self.global_step, self.outputs['prediction']])
         predictions = predictions[0]
-        predictions = [p + 0.02 for p in predictions]  # penalize less the mistakes
+        predictions = [p + 0.01 for p in predictions]  # penalize less the mistakes
         sum = np.sum(predictions)
         predictions = [p / sum for p in predictions]
-        print('{},{}'.format(step, ','.join(['{:.2f}'.format(x) for x in predictions])))
+        print('{},{}'.format(step, ','.join(['{:.3f}'.format(x) for x in predictions])))
         return None
 
 
 import logging
 
 
-def main(model, name, sentence_split=False):
+def main(model, name, sentence_split=False, batch_size = TC_BATCH_SIZE):
     """
     Main method to execute the text_classification models
     :param ModelSimple model: object model based on ModelSimple
@@ -252,7 +265,7 @@ def main(model, name, sentence_split=False):
         evaluator.run()
     else:
         # training
-        task_spec = get_task_spec(with_evaluator=True)
+        task_spec = get_task_spec(with_evaluator=False)  # TODO change to true to use validation
         if task_spec.join_if_ps():
             # join if it is a parameters server and do nothing else
             return
@@ -268,4 +281,4 @@ def main(model, name, sentence_split=False):
             dataset = TextClassificationDataset(type='train', sentence_split=sentence_split)
             trainer = TextClassificationTrainer(dataset=dataset, text_classification_model=model,
                                                 log_dir=log_dir, task_spec=task_spec)
-            trainer.run(epochs=TC_EPOCHS, batch_size=TC_BATCH_SIZE)
+            trainer.run(epochs=TC_EPOCHS, batch_size=batch_size)

@@ -44,12 +44,23 @@ def transform_words_in_ids(dataset, symbols_dict):
                 for word in words:
                     if word not in symbols_dict:
                         print(u'word "{}" not in dict, parsed to unknown token 0'.format(word))
-                        encoded_sentence.append(0)
+                        encoded_sentence.append('0')
                     else:
                         encoded_sentence.append(symbols_dict[word.lower()])
             if len(encoded_sentence) > 0:
                 parsed_sentences.append(encoded_sentence)
         datasample.text = parsed_sentences
+        variation = []
+        for v in datasample.variation.split():
+            if v.lower() not in symbols_dict:
+                variation.append('0')
+            else:
+                variation.append(symbols_dict[v.lower()])
+        datasample.variation = variation
+        if datasample.gene.lower() not in symbols_dict:
+            datasample.gene = '0'
+        else:
+            datasample.gene = symbols_dict[datasample.gene.lower()]
 
 
 def balance_class(dataset):
@@ -66,7 +77,7 @@ def balance_class(dataset):
             classes_group[d.real_class] = []
         classes_group[d.real_class].append(d)
     classes_string = ", ".join(
-        ["{}:{}".format(k, len(classes_group[k])) for k in sorted(classes_group.keys())])
+            ["{}:{}".format(k, len(classes_group[k])) for k in sorted(classes_group.keys())])
     print("{} different classes: {}".format(len(classes_group), classes_string))
     max_in_class = np.max([len(v) for v in classes_group.values()]) * 2
     new_dataset = []
@@ -105,7 +116,9 @@ def save_text_classification_dataset(filename, dataset, dir=DIR_DATA_TEXT_CLASSI
     """
     with open(os.path.join(dir, filename), 'wb') as file:
         for data in dataset:
-            file.write('{} '.format(data.real_class))
+            file.write('{} || '.format(data.real_class))
+            file.write('{} || '.format(data.gene))
+            file.write('{} || '.format(' '.join([str(x) for x in data.variation])))
             for sentence in data.text:
                 for word in sentence:
                     file.write('{} '.format(word))
@@ -155,8 +168,10 @@ def data_stats(train_set, test_set):
     # Average sentence is 36
     # Longest sentence is 4048
 
+
 if __name__ == '__main__':
     import logging
+
     logging.getLogger().setLevel(logging.INFO)
     print('Generate text data augmentation for text classification model...')
     train_set = load_csv_dataset('train_set_numbers_parsed')

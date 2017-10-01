@@ -11,7 +11,7 @@ class ModelSimple(object):
     Base class to create models for text classification. It uses several layers of GRU cells.
     """
 
-    def model(self, input_text, num_output_classes, batch_size, embeddings,
+    def model(self, input_text, gene, variation, num_output_classes, batch_size, embeddings,
               num_hidden=TC_MODEL_HIDDEN, num_layers=TC_MODEL_LAYERS, dropout=TC_MODEL_DROPOUT,
               training=True):
         """
@@ -27,7 +27,8 @@ class ModelSimple(object):
         :param boolean training: whether the model is built for training or not
         :return Dict[str,tf.Tensor]: a dict with logits and prediction tensors
         """
-        embedded_sequence, sequence_length = self.model_embedded_sequence(embeddings, input_text)
+        embedded_sequence, sequence_length, gene, variation = \
+            self.model_embedded_sequence(embeddings, input_text, gene, variation)
         _, max_length, _ = tf.unstack(tf.shape(embedded_sequence))
 
         # Recurrent network.
@@ -49,25 +50,25 @@ class ModelSimple(object):
         output = tf.gather(sequence_output, indexes)
 
         # full connected layer
-        output = layers.dropout(output, keep_prob=dropout, is_training=training)
-        logits = layers.fully_connected(output, num_output_classes, activation_fn=None)
+        logits = self.model_fully_connected(output, gene, variation, num_output_classes, dropout,
+                                            training)
 
         prediction = tf.nn.softmax(logits)
 
         return {
-            'logits': logits,
+            'logits'    : logits,
             'prediction': prediction,
-        }
+            }
 
-    def model_embedded_sequence(self, embeddings, input_text):
-        """
-        Given the embeddings and the input text returns the embedded sequence and
-        the sequence length. The input_text is truncated to the max length of the sequence, so
-        the output embedded_sequence wont have the same shape as input_text or even a constant shape
-        :param embeddings:
-        :param input_text:
-        :return: (embedded_sequence, sequence_length)
-        """
+    def model_fully_connected(self, output, gene, variation, num_output_classes, dropout, training):
+        output = layers.dropout(output, keep_prob=dropout, is_training=training)
+        net = tf.concat([output, gene, variation], axis=1)
+        net = layers.fully_connected(net, 128, activation_fn=tf.nn.relu)
+        net = layers.dropout(net, keep_prob=dropout, is_training=training)
+        logits = layers.fully_connected(net, num_output_classes, activation_fn=None)
+        return logits
+
+    def remove_padding(self, input_text):
         # calculate max length of the input_text
         mask = tf.greater_equal(input_text, 0)  # true for words false for padding
         sequence_length = tf.reduce_sum(tf.cast(mask, tf.int32), 1)
@@ -78,6 +79,20 @@ class ModelSimple(object):
         empty_padding_lenght = input_text_length - max_sequence_length
         input_text, _ = tf.split(input_text, [max_sequence_length, empty_padding_lenght], axis=1)
 
+        return input_text, sequence_length
+
+    def model_embedded_sequence(self, embeddings, input_text, gene, variation):
+        """
+        Given the embeddings and the input text returns the embedded sequence and
+        the sequence length. The input_text is truncated to the max length of the sequence, so
+        the output embedded_sequence wont have the same shape as input_text or even a constant shape
+        :param embeddings:
+        :param input_text:
+        :return: (embedded_sequence, sequence_length)
+        """
+        input_text, sequence_length = self.remove_padding(input_text)
+        variation, variation_length = self.remove_padding(variation)
+
         # create the embeddings
 
         # first vector is a zeros vector used for padding
@@ -86,8 +101,15 @@ class ModelSimple(object):
         embeddings = tf.constant(embeddings, name='embeddings', dtype=tf.float32)
         # this means we need to add 1 to the input_text
         input_text = tf.add(input_text, 1)
+        gene = tf.add(gene, 1)
+        variation = tf.add(variation, 1)
         embedded_sequence = tf.nn.embedding_lookup(embeddings, input_text)
-        return embedded_sequence, sequence_length
+        embedded_gene = tf.nn.embedding_lookup(embeddings, gene)
+        embedded_gene = tf.squeeze(embedded_gene, axis=1)
+        embedded_variation = tf.nn.embedding_lookup(embeddings, variation)
+        embedded_variation = tf.reduce_mean(embedded_variation, axis=1)
+
+        return embedded_sequence, sequence_length, embedded_gene, embedded_variation
 
     def model_arg_scope(self, batch_norm_decay=0.9997, batch_norm_epsilon=0.001):
         with slim.arg_scope([slim.batch_norm],
@@ -156,4 +178,4 @@ class ModelSimple(object):
 
 
 if __name__ == '__main__':
-    main(ModelSimple(), 'simple')
+    main(ModelSimple(), 'simple', batch_size=TC_BATCH_SIZE_SIMPLE)
