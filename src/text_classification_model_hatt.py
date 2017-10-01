@@ -1,4 +1,3 @@
-import sys
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
 from .configuration import *
@@ -31,7 +30,7 @@ class ModelHATT(ModelSimple):
             word_level_output = self._bidirectional_rnn(word_level_inputs, word_level_lengths,
                                                         num_hidden)
             word_level_output = tf.reshape(word_level_output, [batch_size, sentence_size, word_size,
-                                                               num_hidden*2])
+                                                               num_hidden * 2])
             word_level_output = self._attention(word_level_output, word_output_size, gene,
                                                 variation)
             word_level_output = layers.dropout(word_level_output, keep_prob=dropout,
@@ -48,13 +47,13 @@ class ModelHATT(ModelSimple):
                                                    is_training=training)
 
         # classifier
-        # logits = self.model_fully_connected(sentence_level_output, gene, variation,
-        #                                     num_output_classes, dropout, training)
+        logits = self.model_fully_connected(sentence_level_output, gene, variation,
+                                            num_output_classes, dropout, training)
         # gene and variant are used in the attention function
-        output = layers.dropout(sentence_level_output, keep_prob=dropout, is_training=training)
-        net = layers.fully_connected(output, 128, activation_fn=tf.nn.relu)
-        net = layers.dropout(net, keep_prob=dropout, is_training=training)
-        logits = layers.fully_connected(net, num_output_classes, activation_fn=None)
+        # output = layers.dropout(sentence_level_output, keep_prob=dropout, is_training=training)
+        # net = layers.fully_connected(output, 128, activation_fn=tf.nn.relu)
+        # net = layers.dropout(net, keep_prob=dropout, is_training=training)
+        # logits = layers.fully_connected(net, num_output_classes, activation_fn=None)
         # logits = layers.fully_connected(sentence_level_output, num_output_classes,
         #                                 activation_fn=None)
 
@@ -118,20 +117,36 @@ class ModelHATT(ModelSimple):
         inputs_shape = inputs.get_shape()
         if len(inputs_shape) != 3 and len(inputs_shape) != 4:
             raise ValueError('Shape of input must have 3 or 4 dimensions')
+        # input_projection = layers.fully_connected(inputs, output_size,
+        #                                           activation_fn=activation_fn)
+        # doc_context = tf.concat([gene, variation], axis=1)
+        # doc_context_vector = layers.fully_connected(doc_context, output_size,
+        #                                             activation_fn=activation_fn)
+        # doc_context_vector=tf.expand_dims(doc_context_vector, 1)
+        # if len(inputs_shape) == 4:
+        #     doc_context_vector=tf.expand_dims(doc_context_vector, 1)
+        #
+        # vector_attn = input_projection * doc_context_vector
+        # vector_attn = tf.reduce_sum(vector_attn, axis=-1, keep_dims=True)
+        # attention_weights = tf.nn.softmax(vector_attn, dim=1)
+        # weighted_projection = attention_weights * input_projection
+        # outputs = tf.reduce_sum(weighted_projection, axis=-2)
+        # return outputs
+        attention_context_vector = tf.get_variable(name='attention_context_vector',
+                                                   shape=[output_size],
+                                                   initializer=layers.xavier_initializer(),
+                                                   dtype=tf.float32)
         input_projection = layers.fully_connected(inputs, output_size,
                                                   activation_fn=activation_fn)
-        doc_context = tf.concat([gene, variation], axis=1)
-        doc_context_vector = layers.fully_connected(doc_context, output_size,
-                                                    activation_fn=activation_fn)
-        doc_context_vector=tf.expand_dims(doc_context_vector, 1)
+        attention_context_vector = tf.expand_dims(attention_context_vector, 1)
         if len(inputs_shape) == 4:
-            doc_context_vector=tf.expand_dims(doc_context_vector, 1)
-
-        vector_attn = input_projection * doc_context_vector
+            attention_context_vector = tf.expand_dims(attention_context_vector, 1)
+        vector_attn = input_projection * attention_context_vector
         vector_attn = tf.reduce_sum(vector_attn, axis=-1, keep_dims=True)
         attention_weights = tf.nn.softmax(vector_attn, dim=1)
         weighted_projection = attention_weights * input_projection
         outputs = tf.reduce_sum(weighted_projection, axis=-2)
+
         return outputs
 
 
