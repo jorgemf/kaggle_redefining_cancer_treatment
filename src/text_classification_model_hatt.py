@@ -47,18 +47,22 @@ class ModelHATT(ModelSimple):
                                                    is_training=training)
 
         # classifier
-        net = tf.concat([sentence_level_output, gene, variation], axis=1)
-        net = layers.fully_connected(net, 128, activation_fn=tf.nn.relu)
-        logits = layers.fully_connected(net, num_output_classes, activation_fn=None)
+
+        # net = tf.concat([sentence_level_output, gene, variation], axis=1)
+        # net = layers.fully_connected(net, 128, activation_fn=tf.nn.relu)
+        # logits = layers.fully_connected(net, num_output_classes, activation_fn=None)
+
         # logits = self.model_fully_connected(sentence_level_output, gene, variation,
         #                                     num_output_classes, dropout, training)
+
         # gene and variant are used in the attention function
         # output = layers.dropout(sentence_level_output, keep_prob=dropout, is_training=training)
         # net = layers.fully_connected(output, 128, activation_fn=tf.nn.relu)
         # net = layers.dropout(net, keep_prob=dropout, is_training=training)
         # logits = layers.fully_connected(net, num_output_classes, activation_fn=None)
-        # logits = layers.fully_connected(sentence_level_output, num_output_classes,
-        #                                 activation_fn=None)
+
+        logits = layers.fully_connected(sentence_level_output, num_output_classes,
+                                        activation_fn=None)
 
         prediction = tf.nn.softmax(logits)
 
@@ -120,32 +124,25 @@ class ModelHATT(ModelSimple):
         inputs_shape = inputs.get_shape()
         if len(inputs_shape) != 3 and len(inputs_shape) != 4:
             raise ValueError('Shape of input must have 3 or 4 dimensions')
-        # input_projection = layers.fully_connected(inputs, output_size,
-        #                                           activation_fn=activation_fn)
-        # doc_context = tf.concat([gene, variation], axis=1)
-        # doc_context_vector = layers.fully_connected(doc_context, output_size,
-        #                                             activation_fn=activation_fn)
-        # doc_context_vector=tf.expand_dims(doc_context_vector, 1)
-        # if len(inputs_shape) == 4:
-        #     doc_context_vector=tf.expand_dims(doc_context_vector, 1)
-        #
-        # vector_attn = input_projection * doc_context_vector
-        # vector_attn = tf.reduce_sum(vector_attn, axis=-1, keep_dims=True)
-        # attention_weights = tf.nn.softmax(vector_attn, dim=1)
-        # weighted_projection = attention_weights * input_projection
-        # outputs = tf.reduce_sum(weighted_projection, axis=-2)
-        # return outputs
-        attention_context_vector = tf.get_variable(name='attention_context_vector',
-                                                   shape=[output_size],
-                                                   initializer=layers.xavier_initializer(),
-                                                   dtype=tf.float32)
         input_projection = layers.fully_connected(inputs, output_size,
                                                   activation_fn=activation_fn)
+        # attention_context_vector = tf.get_variable(name='attention_context_vector',
+        #                                            shape=[output_size],
+        #                                            initializer=layers.xavier_initializer(),
+        #                                            dtype=tf.float32)
+        # vector_attn = input_projection * attention_context_vector
 
-        vector_attn = input_projection * attention_context_vector
+        doc_context = tf.concat([gene, variation], axis=1)
+        doc_context_vector = layers.fully_connected(doc_context, output_size,
+                                                    activation_fn=activation_fn)
+        doc_context_vector = tf.expand_dims(doc_context_vector, 1)
+        if len(inputs_shape) == 4:
+            doc_context_vector = tf.expand_dims(doc_context_vector, 1)
+
+        vector_attn = input_projection * doc_context_vector
         vector_attn = tf.reduce_sum(vector_attn, axis=-1, keep_dims=True)
         attention_weights = tf.nn.softmax(vector_attn, dim=1)
-        weighted_projection = attention_weights * input_projection
+        weighted_projection = input_projection * attention_weights
         outputs = tf.reduce_sum(weighted_projection, axis=-2)
 
         return outputs
