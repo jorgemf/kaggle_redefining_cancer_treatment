@@ -31,7 +31,7 @@ class ModelHATT(ModelSimple):
             word_level_output = self._bidirectional_rnn(word_level_inputs, word_level_lengths,
                                                         num_hidden)
             word_level_output = tf.reshape(word_level_output, [batch_size, sentence_size, word_size,
-                                                               word_output_size])
+                                                               num_hidden*2])
             word_level_output = self._attention(word_level_output, word_output_size, gene,
                                                 variation)
             word_level_output = layers.dropout(word_level_output, keep_prob=dropout,
@@ -114,22 +114,24 @@ class ModelHATT(ModelSimple):
         sequence_output = tf.concat((fw_outputs, bw_outputs), 2)
         return sequence_output
 
-    def _attention(self, inputs, output_size, gene, variation,
-                   initializer=layers.xavier_initializer(), activation_fn=tf.tanh):
+    def _attention(self, inputs, output_size, gene, variation, activation_fn=tf.tanh):
+        inputs_shape = inputs.get_shape()
+        if len(inputs_shape) != 3 and len(inputs_shape) != 4:
+            raise ValueError('Shape of input must have 3 or 4 dimensions')
         input_projection = layers.fully_connected(inputs, output_size,
                                                   activation_fn=activation_fn)
-
         doc_context = tf.concat([gene, variation], axis=1)
-        doc_context_vector = layers.fully_connected(doc_context, output_size, activation_fn=tf.tanh)
-        input_projection_transpose = tf.transpose(input_projection, [1, 0, 2])
-        vector_attn_mult = input_projection_transpose * doc_context_vector
-        vector_attn_mult = tf.transpose(vector_attn_mult, [1, 0, 2])
-        vector_attn = tf.reduce_sum(vector_attn_mult, axis=2, keep_dims=True)
+        doc_context_vector = layers.fully_connected(doc_context, output_size,
+                                                    activation_fn=activation_fn)
+        doc_context_vector=tf.expand_dims(doc_context_vector, 1)
+        if len(inputs_shape) == 4:
+            doc_context_vector=tf.expand_dims(doc_context_vector, 1)
+
+        vector_attn = input_projection * doc_context_vector
+        vector_attn = tf.reduce_sum(vector_attn, axis=-1, keep_dims=True)
         attention_weights = tf.nn.softmax(vector_attn, dim=1)
-        weighted_projection = tf.multiply(input_projection, attention_weights)
-
-        outputs = tf.reduce_sum(weighted_projection, axis=1)
-
+        weighted_projection = attention_weights * input_projection
+        outputs = tf.reduce_sum(weighted_projection, axis=-2)
         return outputs
 
 
