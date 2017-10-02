@@ -26,8 +26,8 @@ DIR_WIKIPEDIA_GENES = os.path.join(DIR_GENERATED_DATA, 'gen')
 VOCABULARY_SIZE = 40000
 EMBEDDINGS_SIZE = 300
 MAX_WORDS = 3000  # 40000  # maximum number of words in the document
-MAX_SENTENCES = 500  # 1000  # maximum number of sentences in the document
-MAX_WORDS_IN_SENTENCE = 35  # 60  # maximum number of words per sentence in the document
+MAX_SENTENCES = 200  # 1000  # maximum number of sentences in the document
+MAX_WORDS_IN_SENTENCE = 40  # 60  # maximum number of words per sentence in the document
 
 # word2vec
 
