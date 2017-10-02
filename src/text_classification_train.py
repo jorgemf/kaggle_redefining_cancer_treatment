@@ -107,14 +107,14 @@ class TextClassificationTest(evaluator.Evaluator):
         self.text_classification_model = text_classification_model
         self.eval_writer = tf.summary.FileWriter(log_dir)
 
-    def model(self, input_texts, gene, variation, expected_labels, batch_size,
+    def model(self, input_text_begin, input_text_end, gene, variation, expected_labels, batch_size,
               vocabulary_size=VOCABULARY_SIZE, embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
         # embeddings
         embeddings = _load_embeddings(vocabulary_size, embeddings_size)
         # model
         with slim.arg_scope(self.text_classification_model.model_arg_scope()):
-            outputs = self.text_classification_model.model(input_texts, gene, variation,
-                                                           output_classes,
+            outputs = self.text_classification_model.model(input_text_begin, input_text_end,
+                                                           gene, variation, output_classes,
                                                            embeddings=embeddings,
                                                            batch_size=batch_size,
                                                            training=False)
@@ -133,8 +133,9 @@ class TextClassificationTest(evaluator.Evaluator):
         return None
 
     def create_graph(self, dataset_tensor, batch_size):
-        input_texts, gene, variation, expected_labels = dataset_tensor
-        graph_data = self.model(input_texts, gene, variation, expected_labels, batch_size)
+        input_text_begin, input_text_end, gene, variation, expected_labels = dataset_tensor
+        graph_data = self.model(input_text_begin, input_text_end, gene, variation,
+                                expected_labels, batch_size)
         return graph_data
 
     def step(self, session, graph_data, summary_op):

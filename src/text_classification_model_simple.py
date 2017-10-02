@@ -11,9 +11,11 @@ class ModelSimple(object):
     Base class to create models for text classification. It uses several layers of GRU cells.
     """
 
-    def model(self, input_text, gene, variation, num_output_classes, batch_size, embeddings,
+    def model(self, input_text_begin, input_text_end, gene, variation,
+              num_output_classes, batch_size, embeddings,
               num_hidden=TC_MODEL_HIDDEN, num_layers=TC_MODEL_LAYERS, dropout=TC_MODEL_DROPOUT,
               training=True):
+
         """
         Creates a model for text classification
         :param tf.Tensor input_text: the input data, the text as
@@ -27,9 +29,11 @@ class ModelSimple(object):
         :param boolean training: whether the model is built for training or not
         :return Dict[str,tf.Tensor]: a dict with logits and prediction tensors
         """
-        embedded_sequence, sequence_length, gene, variation = \
-            self.model_embedded_sequence(embeddings, input_text, gene, variation)
-        _, max_length, _ = tf.unstack(tf.shape(embedded_sequence))
+        embedded_sequence_begin, sequence_length_begin, \
+        embedded_sequence_end, sequence_length_end, \
+        gene, variation = \
+            self.model_embedded_sequence(embeddings, input_text_begin, input_text_end, gene, variation)
+        _, max_length, _ = tf.unstack(tf.shape(embedded_sequence_begin))
 
         # Recurrent network.
         cells = []
@@ -39,14 +43,15 @@ class ModelSimple(object):
                 cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=dropout)
             cells.append(cell)
         network = tf.nn.rnn_cell.MultiRNNCell(cells)
-        type = embedded_sequence.dtype
+        type = embedded_sequence_begin.dtype
 
-        sequence_output, _ = tf.nn.dynamic_rnn(network, embedded_sequence, dtype=tf.float32,
-                                               sequence_length=sequence_length,
+        # TODO use also sequence end
+        sequence_output, _ = tf.nn.dynamic_rnn(network, embedded_sequence_begin, dtype=tf.float32,
+                                               sequence_length=embedded_sequence_begin,
                                                initial_state=network.zero_state(batch_size, type))
         # get last output of the dynamic_rnn
         sequence_output = tf.reshape(sequence_output, [batch_size * max_length, num_hidden])
-        indexes = tf.range(batch_size) * max_length + (sequence_length - 1)
+        indexes = tf.range(batch_size) * max_length + (embedded_sequence_begin - 1)
         output = tf.gather(sequence_output, indexes)
 
         # full connected layer
@@ -81,7 +86,7 @@ class ModelSimple(object):
 
         return input_text, sequence_length
 
-    def model_embedded_sequence(self, embeddings, input_text, gene, variation):
+    def model_embedded_sequence(self, embeddings, input_text_begin, input_text_end, gene, variation):
         """
         Given the embeddings and the input text returns the embedded sequence and
         the sequence length. The input_text is truncated to the max length of the sequence, so
@@ -90,7 +95,8 @@ class ModelSimple(object):
         :param input_text:
         :return: (embedded_sequence, sequence_length)
         """
-        input_text, sequence_length = self.remove_padding(input_text)
+        input_text_begin, sequence_length_begin = self.remove_padding(input_text_begin)
+        input_text_end, sequence_length_end = self.remove_padding(input_text_end)
         variation, variation_length = self.remove_padding(variation)
 
         # create the embeddings
@@ -100,16 +106,20 @@ class ModelSimple(object):
         embeddings = [[0.0] * embeddings_dimension] + embeddings
         embeddings = tf.constant(embeddings, name='embeddings', dtype=tf.float32)
         # this means we need to add 1 to the input_text
-        input_text = tf.add(input_text, 1)
+        input_text_begin = tf.add(input_text_begin, 1)
+        input_text_end = tf.add(input_text_end, 1)
         gene = tf.add(gene, 1)
         variation = tf.add(variation, 1)
-        embedded_sequence = tf.nn.embedding_lookup(embeddings, input_text)
+        embedded_sequence_begin = tf.nn.embedding_lookup(embeddings, input_text_begin)
+        embedded_sequence_end = tf.nn.embedding_lookup(embeddings, input_text_end)
         embedded_gene = tf.nn.embedding_lookup(embeddings, gene)
         embedded_gene = tf.squeeze(embedded_gene, axis=1)
         embedded_variation = tf.nn.embedding_lookup(embeddings, variation)
         embedded_variation = tf.reduce_mean(embedded_variation, axis=1)
 
-        return embedded_sequence, sequence_length, embedded_gene, embedded_variation
+        return embedded_sequence_begin, sequence_length_begin, \
+               embedded_sequence_end, sequence_length_end, \
+               embedded_gene, embedded_variation
 
     def model_arg_scope(self, batch_norm_decay=0.9997, batch_norm_epsilon=0.001):
         with slim.arg_scope([slim.batch_norm],

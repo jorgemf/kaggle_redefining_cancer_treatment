@@ -6,20 +6,38 @@ from .text_classification_train import main
 
 
 class ModelHATT(ModelSimple):
-    def model(self, input_words, gene, variation, num_output_classes, batch_size, embeddings,
-              num_hidden=TC_MODEL_HIDDEN, dropout=TC_MODEL_DROPOUT,
-              word_output_size=TC_HATT_WORD_OUTPUT_SIZE,
-              sentence_output_size=TC_HATT_SENTENCE_OUTPUT_SIZE, training=True):
-        # FIXME for TF <= 1.2.0  set shape because of padding issues in dataset
-        input_words = tf.reshape(input_words, [batch_size, MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
-        # input_words [document x sentence x word]
-        embeddings_size = len(embeddings[0])
+    def _create_embeddings(self, embeddings):
+        embeddings_dimension = len(embeddings[0])
+        embeddings = [[0.0] * embeddings_dimension] + embeddings
+        embeddings = tf.constant(embeddings, name='embeddings', dtype=tf.float32)
+        return embeddings
 
-        embedded_sequence, sentences_length, words_length, gene, variation = \
-            self.model_embedded_sequence(embeddings, input_words, gene, variation)
+    def _embed_sequence_with_length(self, embeddings, input_text):
+        # calculate max length of the input_text
+        mask_words = tf.greater(input_text, 0)  # true for words false for padding
+        words_length = tf.reduce_sum(tf.cast(mask_words, tf.int32), -1)
+        mask_sentences = tf.greater(words_length, 0)
+        sentences_length = tf.reduce_sum(tf.cast(mask_sentences, tf.int32), 1)
+        input_text = tf.add(input_text, 1)
+        embedded_sequence = tf.nn.embedding_lookup(embeddings, input_text)
+        return embedded_sequence, sentences_length, words_length
+
+    def _embed(self, embeddings, gene, variation):
+        variation, variation_length = self.remove_padding(variation)
+        variation = tf.add(variation, 1)
+        embedded_variation = tf.nn.embedding_lookup(embeddings, variation)
+        embedded_variation = tf.reduce_mean(embedded_variation, axis=1)
+        gene = tf.add(gene, 1)
+        embedded_gene = tf.nn.embedding_lookup(embeddings, gene)
+        embedded_gene = tf.squeeze(embedded_gene, axis=1)
+        return embedded_gene, embedded_variation
+
+    def _hatt(self, input_words, embeddings, gene, variation, batch_size, embeddings_size,
+              num_hidden, dropout, word_output_size, sentence_output_size, training=True):
+        input_words = tf.reshape(input_words, [batch_size, MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
+        embedded_sequence, sentences_length, words_length = \
+            self._embed_sequence_with_length(embeddings, input_words)
         _, sentence_size, word_size, _ = tf.unstack(tf.shape(embedded_sequence))
-        gene = tf.reshape(gene, [batch_size, embeddings_size])
-        variation = tf.reshape(variation, [batch_size, embeddings_size])
 
         # RNN word level
         with tf.variable_scope('word_level'):
@@ -46,61 +64,36 @@ class ModelHATT(ModelSimple):
             sentence_level_output = layers.dropout(sentence_level_output, keep_prob=dropout,
                                                    is_training=training)
 
+        return sentence_level_output
+
+    def model(self, input_text_begin, input_text_end, gene, variation,
+              num_output_classes, batch_size, embeddings,
+              num_hidden=TC_MODEL_HIDDEN, dropout=TC_MODEL_DROPOUT,
+              word_output_size=TC_HATT_WORD_OUTPUT_SIZE,
+              sentence_output_size=TC_HATT_SENTENCE_OUTPUT_SIZE, training=True):
+        embeddings_size = len(embeddings[0])
+        embeddings = self._create_embeddings(embeddings)
+        gene, variation = self._embed(embeddings, gene, variation)
+
+        with tf.variable_scope('text_begin'):
+            hatt_begin = self._hatt(input_text_begin, embeddings, gene, variation, batch_size,
+                                    embeddings_size, num_hidden, dropout, word_output_size,
+                                    sentence_output_size, training)
+
+        with tf.variable_scope('text_end'):
+            hatt_end = self._hatt(input_text_end, embeddings, gene, variation, batch_size,
+                                  embeddings_size, num_hidden, dropout, word_output_size,
+                                  sentence_output_size, training)
+
         # classifier
-
-        # net = tf.concat([sentence_level_output, gene, variation], axis=1)
-        # net = layers.fully_connected(net, 128, activation_fn=tf.nn.relu)
-        # logits = layers.fully_connected(net, num_output_classes, activation_fn=None)
-
-        # logits = self.model_fully_connected(sentence_level_output, gene, variation,
-        #                                     num_output_classes, dropout, training)
-
-        # gene and variant are used in the attention function
-        # output = layers.dropout(sentence_level_output, keep_prob=dropout, is_training=training)
-        # net = layers.fully_connected(output, 128, activation_fn=tf.nn.relu)
-        # net = layers.dropout(net, keep_prob=dropout, is_training=training)
-        # logits = layers.fully_connected(net, num_output_classes, activation_fn=None)
-
-        logits = layers.fully_connected(sentence_level_output, num_output_classes,
-                                        activation_fn=None)
-
+        hatt = tf.concat([hatt_begin, hatt_end], axis=1)
+        logits = layers.fully_connected(hatt, num_output_classes, activation_fn=None)
         prediction = tf.nn.softmax(logits)
 
         return {
             'logits'    : logits,
             'prediction': prediction,
             }
-
-    def model_embedded_sequence(self, embeddings, input_text, gene, variation):
-        """
-        Given the embeddings and the input text returns the embedded sequence and
-        the sentence length and words length
-        :param embeddings:
-        :param input_text:
-        :return: (embedded_sequence, sentences_length, words_length)
-        """
-        # calculate max length of the input_text
-        mask_words = tf.greater(input_text, 0)  # true for words false for padding
-        words_length = tf.reduce_sum(tf.cast(mask_words, tf.int32), -1)
-        mask_sentences = tf.greater(words_length, 0)
-        sentences_length = tf.reduce_sum(tf.cast(mask_sentences, tf.int32), 1)
-        variation, variation_length = self.remove_padding(variation)
-
-        # create the embeddings
-        # first vector is a zeros vector used for padding
-        embeddings_dimension = len(embeddings[0])
-        embeddings = [[0.0] * embeddings_dimension] + embeddings
-        embeddings = tf.constant(embeddings, name='embeddings', dtype=tf.float32)
-        # this means we need to add 1 to the input_text
-        input_text = tf.add(input_text, 1)
-        gene = tf.add(gene, 1)
-        variation = tf.add(variation, 1)
-        embedded_sequence = tf.nn.embedding_lookup(embeddings, input_text)
-        embedded_gene = tf.nn.embedding_lookup(embeddings, gene)
-        embedded_gene = tf.squeeze(embedded_gene, axis=1)
-        embedded_variation = tf.nn.embedding_lookup(embeddings, variation)
-        embedded_variation = tf.reduce_mean(embedded_variation, axis=1)
-        return embedded_sequence, sentences_length, words_length, embedded_gene, embedded_variation
 
     def _bidirectional_rnn(self, inputs_embedding, inputs_length, num_hidden):
         # Recurrent network.
@@ -126,12 +119,6 @@ class ModelHATT(ModelSimple):
             raise ValueError('Shape of input must have 3 or 4 dimensions')
         input_projection = layers.fully_connected(inputs, output_size,
                                                   activation_fn=activation_fn)
-        # attention_context_vector = tf.get_variable(name='attention_context_vector',
-        #                                            shape=[output_size],
-        #                                            initializer=layers.xavier_initializer(),
-        #                                            dtype=tf.float32)
-        # vector_attn = input_projection * attention_context_vector
-
         doc_context = tf.concat([gene, variation], axis=1)
         doc_context_vector = layers.fully_connected(doc_context, output_size,
                                                     activation_fn=activation_fn)

@@ -81,22 +81,26 @@ class TextClassificationDataset(TFDataSet):
                 for i, sentence in enumerate(sequence):
                     sentence = _padding(sentence, MAX_WORDS_IN_SENTENCE)
                     sequence[i] = np.asarray(sentence, dtype=np.int32)
-                sequence = _padding(sequence, MAX_SENTENCES, token=sentence_padding)
+                sequence_begin = _padding(sequence, MAX_SENTENCES, token=sentence_padding)
+                sequence_end = _padding(list(reversed(sequence)), MAX_SENTENCES, token=sentence_padding)
             else:
-                sequence = _padding(sequence, MAX_WORDS)
+                sequence_begin = _padding(sequence, MAX_WORDS)
+                sequence_end = _padding(list(reversed(sequence)), MAX_WORDS, token=sentence_padding)
 
             if dataset_type == 'train' or dataset_type == 'val':
                 # first class is 1, last one is 9
                 data_sample_class = int(example_class) - 1
                 return [
-                    np.asarray(sequence, dtype=np.int32),
+                    np.asarray(sequence_begin, dtype=np.int32),
+                    np.asarray(sequence_end, dtype=np.int32),
                     np.int32(example_gene),
                     np.asarray(example_variant, dtype=np.int32),
                     np.int32(data_sample_class),
                     ]
             elif dataset_type == 'test' or dataset_type == 'stage2_test':
                 return [
-                    np.asarray(sequence, dtype=np.int32),
+                    np.asarray(sequence_begin, dtype=np.int32),
+                    np.asarray(sequence_end, dtype=np.int32),
                     np.int32(example_gene),
                     np.asarray(example_variant, dtype=np.int32),
                     ]
@@ -104,28 +108,28 @@ class TextClassificationDataset(TFDataSet):
                 raise ValueError()
 
         if self.type == 'train' or self.type == 'val':
-            sequence, gene, variant, result_class = \
+            sequence_begin, sequence_end, gene, variant, result_class = \
+                tf.py_func(lambda x: _parse_sequence(x, self.type), [example_serialized],
+                           [tf.int32, tf.int32, tf.int32, tf.int32, tf.int32], stateful=True)
+        elif self.type == 'test' or self.type == 'stage2_test':
+            sequence_begin, sequence_end, gene, variant = \
                 tf.py_func(lambda x: _parse_sequence(x, self.type), [example_serialized],
                            [tf.int32, tf.int32, tf.int32, tf.int32], stateful=True)
-        elif self.type == 'test' or self.type == 'stage2_test':
-            sequence, gene, variant = \
-                tf.py_func(lambda x: _parse_sequence(x, self.type), [example_serialized],
-                           [tf.int32, tf.int32, tf.int32], stateful=True)
             result_class = None
         else:
             raise ValueError()
 
         # TODO for TF <= 1.2.0  set shape because of padding
         if self.sentence_split is not None:
-            sequence = tf.reshape(sequence, [MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
+            sequence_begin = tf.reshape(sequence_begin, [MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
         else:
-            sequence = tf.reshape(sequence, [MAX_WORDS])
+            sequence_end = tf.reshape(sequence_end, [MAX_WORDS])
 
         gene = tf.reshape(gene, [1])
         variant = tf.reshape(variant, [variant_padding])
         if result_class is not None:
             result_class = tf.reshape(result_class, [1])
-            return sequence, gene, variant, result_class
+            return sequence_begin, sequence_end, gene, variant, result_class
         else:
-            return sequence, gene, variant
+            return sequence_begin, sequence_end, gene, variant
 
