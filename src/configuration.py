@@ -76,3 +76,4 @@ TC_CNN_FILTERS = 50  # number of dimensions of the cnn network
 TC_CNN_LAYERS = 2  # number of layers of the cnn network
 TC_HATT_WORD_OUTPUT_SIZE = 200  # number of words outputs size for the hatt model
 TC_HATT_SENTENCE_OUTPUT_SIZE = 200  # number of sentences outputs size for the hatt model
+
