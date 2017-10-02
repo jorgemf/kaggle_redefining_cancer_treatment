@@ -75,8 +75,8 @@ class TextClassificationTrainer(trainer.Trainer):
         return None
 
     def create_graph(self, dataset_tensor, batch_size):
-        input_texts, gene, variation, expected_labels = dataset_tensor
-        return self.model(input_texts, gene, variation, expected_labels, batch_size)
+        input_text_begin, input_text_end, gene, variation, expected_labels = dataset_tensor
+        return self.model(input_text_begin, input_text_end, gene, variation, expected_labels, batch_size)
 
     def step(self, session, graph_data):
         lr, _, loss, step, metrics = \
@@ -209,8 +209,8 @@ class TextClassificationEval(evaluator.Evaluator):
         return self.outputs
 
     def create_graph(self, dataset_tensor, batch_size):
-        input_text, gene, variation = dataset_tensor
-        return self.model(input_text, gene, variation, batch_size)
+        input_text_begin, input_text_end, gene, variation = dataset_tensor
+        return self.model(input_text_begin, input_text_end, gene, variation, batch_size)
 
     def after_create_session(self, session, coord):
         super(TextClassificationEval, self).after_create_session(session, coord)
