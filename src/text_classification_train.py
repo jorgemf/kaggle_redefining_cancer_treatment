@@ -38,7 +38,7 @@ class TextClassificationTrainer(trainer.Trainer):
                                                         task_spec=task_spec,
                                                         monitored_training_session_config=config)
 
-    def model(self, input_texts, gene, variation, expected_labels, batch_size,
+    def model(self, input_text_begin, input_text_end, gene, variation, expected_labels, batch_size,
               vocabulary_size=VOCABULARY_SIZE, embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
         # embeddings
         embeddings = _load_embeddings(vocabulary_size, embeddings_size)
@@ -48,8 +48,8 @@ class TextClassificationTrainer(trainer.Trainer):
 
         # model
         with slim.arg_scope(self.text_classification_model.model_arg_scope()):
-            outputs = self.text_classification_model.model(input_texts, gene, variation,
-                                                           output_classes,
+            outputs = self.text_classification_model.model(input_text_begin, input_text_end,
+                                                           gene, variation, output_classes,
                                                            embeddings=embeddings,
                                                            batch_size=batch_size)
 
@@ -189,8 +189,8 @@ class TextClassificationEval(evaluator.Evaluator):
         self.dataset = dataset
         self.text_classification_model = text_classification_model
 
-    def model(self, input_texts, gene, variation, batch_size, vocabulary_size=VOCABULARY_SIZE,
-              embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
+    def model(self, input_text_begin, input_text_end, gene, variation, batch_size,
+              vocabulary_size=VOCABULARY_SIZE, embeddings_size=EMBEDDINGS_SIZE, output_classes=9):
         # embeddings
         embeddings = _load_embeddings(vocabulary_size, embeddings_size)
         # global step
@@ -199,8 +199,8 @@ class TextClassificationEval(evaluator.Evaluator):
         # model
         with tf.control_dependencies([self.global_step]):
             with slim.arg_scope(self.text_classification_model.model_arg_scope()):
-                self.outputs = self.text_classification_model.model(input_texts, gene, variation,
-                                                                    output_classes,
+                self.outputs = self.text_classification_model.model(input_text_begin, input_text_end,
+                                                                    gene, variation, output_classes,
                                                                     embeddings=embeddings,
                                                                     batch_size=batch_size,
                                                                     training=False)
