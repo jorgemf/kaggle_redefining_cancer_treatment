@@ -1,5 +1,169 @@
 [Read this in medium](https://medium.com/@jorgemf/personalized-medicine-redefining-cancer-treatment-by-deep-learning-f6c64a366fff)
 
+> Disclaimer: This work has been supported by [Good AI](http://goodailab.com) Lab and all the experiments has been trained using their platform [TensorPort](https://tensorport.com).
+
+# Personalized Medicine: Redefining Cancer Treatment by deep learning
+
+## Introduction
+
+In this article I want to show you how to apply deep learning to a domain where we are not experts. Usually applying domain information in any problem we can transform the problem in a way that our algorithms work better, but this is not going to be the case. We are going to create a deep learning model for a Kaggle competition: "[Personalized Medicine: Redefining Cancer Treatment](https://www.kaggle.com/c/msk-redefining-cancer-treatment)"
+
+The goal of the competition is to classify a document, a paper, into the type of mutation that will contribute to tumor growth. We also have the gene and the variant for the classification. Currently the interpretation of genetic mutations is being done manually, which it is very time consuming task.
+
+We can approach this problem as a text classification problem applied to the domain of medical articles. It is important to highlight the specific domain here, as we probably won't be able to adapt other text classification models to our specific domain due to the vocabulary used.
+
+Another important challenge we are facing with this problem is that the dataset only contains 3322 samples for training. Usually deep learning algorithms have hundred of thousands of samples for training. We will have to keep our model simple or do some type of data augmentation to increase the training samples.
+
+In the next sections we will see related work in text classification, including non deep learning algorithms. Next, we will describe the dataset and modifications done before training. We will continue with the description of the experiments and their results. And finally, the conclusions and an appendix of how to reproduce the experiments in TensorPort.
+
+## Related work in text classification
+
+### Non deep learning models
+
+The classic methods for text classification are based on [bag of words](https://en.wikipedia.org/wiki/Bag-of-words_model) and [n-grams](https://en.wikipedia.org/wiki/N-gram). In both cases, sets of words are extracted from the text and are used to train a simple classifier, as it could be [xgboost](https://en.wikipedia.org/wiki/Xgboost) which it is very popular in kaggle competitions.
+
+There are variants of the previous algorithms, for example the [term frequency–inverse document frequency](https://en.wikipedia.org/wiki/Tf–idf), also knows as TF–idf, tries to discover which words are more important per each type of document.
+
+### Word2Vector
+
+[Word2Vec](https://arxiv.org/abs/1301.3781) is not an algorithm for text classification but an algorithm to compute vector representations of words from very large datasets. The peculiarity of word2vec is that the words that share common context in the text are vectors located in the same space. For example, countries would be close to each other in the vector space. Another property of this algorithm is that some concepts are encoded as vectors, for example the gender is encoded as a vector in such way that the next equation is true: "king - male + female = queen", the result of the math operations is a vector very close to "queen".
+
+Using the word representations provided by Word2Vec we can apply math operations to words and so, new algorithms for the text classification as the deep learning algorithms we will see later.
+
+There are two ways to train a Word2Vec model:
+[Continuous Bag-of-Words, also knows as CBOW, and the Skip-Gram](https://arxiv.org/abs/1301.3781). Given a context for a word, usually its adjacent words, we can predict the word with the context (CBOW) or predict the context with the word (Skip-Gram). Both algorithms are similar but Skip-Gram seems to [produce better results for large datasets](http://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf).
+
+Besides the linear context we described before, other type of context as a [dependency-based context](https://levyomer.files.wordpress.com/2014/04/dependency-based-word-embeddings-acl-2014.pdf) can be used.
+
+#### Doc2Vec
+
+[Doc2Vector](https://arxiv.org/abs/1405.4053) or Paragraph2Vector is a variation of Word2Vec that can be used for text classification. This algorithm tries to fix the weakness of traditional algorithms that do not consider the order of the words and also their semantics. 
+
+This algorithm is similar to Word2Vec, it also learns the vector representations of the words at the same time it learns the vector representation of the document. We consider the document as part of the context for the words. Once we train the algorithm we can get the vector of new documents doing the same training in these new documents but with the word encodings fixed, so it only learns the vector of the documents. Then we can apply a clustering algorithm or find the closest document in the training set in order to make a prediction.
+
+### Deep learning models
+
+
+#### LSTM / GRU
+
+#### CNN + LSTM
+
+#### QRNN
+
+#### HATT
+
+#### Other
+
+
+
+Simple LSTM / GRU
+
+Bidrectional GRU
+
+CNN
+
+HATT
+
+## Dataset
+
+The dataset can be found in https://www.kaggle.com/c/msk-redefining-cancer-treatment/data. It contains basically the text of a paper, the gen related with the mutation and the variation. One text can have multiple genes and variations, so we will need to add this information to our models somehow.
+
+One of the things we need to do first is to clean the text as it from papers and have a lot of references and things that are not relevant for the task. The second thing we can notice from the dataset is that the variations seems to follow some type of pattern. Although we might be wrong we will transform the variations in a sequence of symbols in order to let the algorithm discover this patterns in the symbols if it exits. We would get better results understanding better the variants and how to encode them correctly.
+
+In the beginning of the kaggle competition the test set contained 5668 samples while the train set only 3321. The reason was most of the test samples were fake in order to not to extract any information from them. Later in the competition this test set was made public with its real classes and only contained 987 samples. We will use the test dataset of the competition as our validation dataset in the experiments. Every train sample is classified in one of the 9 classes, which are very unbalanced.
+ 
+ |class|number of samples|
+ |-|-|
+ |1|566|
+ |2|452|
+ |3|89|
+ |4|686|
+ |5|242|
+ |6|273|
+ |7|952|
+ |8|19|
+ |9|37|
+ 
+ |class|1|2|3|4|5|6|7|8|9|
+ |number of samples|566|452|89|686|242|273|952|19|37|
+ 
+ ### Preprocessing
+ 
+ Probably the most important task of this challenge is how to model the text in order to apply a classifier. As we don’t have deeply understanding of the domain we are going to keep the transformation of the data as simple as possible and let the deep learning algorithm do all the hard work for us. But, most probably, the results would improve with a better model to extract features from the dataset.
+
+We do several things to clean the data:
+- Remove bibliographic references as “Author et al. 2007” or “[1,2]”. We also remove other paper related stuff like “Figure 3A” or “Table 4”.
+- We add some extra white spaces around symbols as “.”, “,”, “?”, “(“, “0”, etc.
+- We replace the numbers by symbols. If the number is below 0.001 is one symbol, if it is between 0.001 and 0.01 is another symbol, etc.
+- We change all the variations we find in the text by a sequence of symbols where each symbol is a character of the variation (with some exceptions).
+
+Another approach is to use an already 
+ 
+ ### Data augmentation
+ 
+ Our dataset is very limited for a deep learning algorithm, we only count with 3322 training samples. In order to avoid overfitting we need to increase the size of the dataset and try to simplify the deep learning model.
+ 
+ The best way to do data augmentation is to use humans to rephrase sentences, which it is an unrealistic approach in our case. Another way is to replace words or phrases with their synonyms, but we are in a very specific domain where most keywords are medical terms without synonyms, so we are not going to use this approach.
+ 
+ As we have very long texts what we are going to do is to remove parts of the original text to create new training samples. We selects a couple or random sentences of the text and remove them to create the new sample text.
+ 
+ In order to improve the Word2Vec model and add some external information we are going to use the definitions of the genes in the Wikipedia. Our hypothesis is that the external sources should contain more information about the genes and their mutations that is not in the abstracts of the dataset. We could add more external sources of information that can improve our Word2Vec model as others research papers related with the topic. We leave this for future improvements out of the scope of this article.
+
+## Experiments
+
+As in the competition we are going to use the [multi-class logarithmic loss](https://www.kaggle.com/wiki/LogLoss) for both training and test. 
+
+If we would want to use any of the models in real life it would be interesting to analyze the [roc curve](https://en.wikipedia.org/wiki/Receiver_operating_characteristic) for all classes before taking any decision. In the scope of this article we will also analyse briefly the accuracy of the models.
+
+### Word2Vec
+
+We are going to use a linear context and [skip-gram with negative sampling](https://arxiv.org/abs/1301.3781), as it gets better results for small datasets with infrequent words. 
+
+The context is generated by the 2 words adjacent to the target word and 2 random words of a set of words that are up to a distance 6 of the target word. Where the most infrequent words have more probability to be included in the context set. The vocabulary size is 40000 and the embedding size is 100 or 300 depending on the model we are using the embeddings. We also use 64 negative examples to calculate the loss value.
+
+### Doc2Vec
+
+### 3-Layer GRU
+
+### Bidirectional GRU
+
+### CNN GRU
+
+### HATT
+
+## Results
+
+### Competition results
+
+Bag of Words, TF-IDF, Word2Vec, LSTM
+https://www.kaggle.com/reiinakano/basic-nlp-bag-of-words-tf-idf-word2vec-lstm
+
+XGBoost
+https://www.kaggle.com/the1owl/redefining-treatment-0-57456
+
+| Algorithm | Validation Loss | Validation Accuracy| Public Leaderboard Loss |
+|-|-|-|
+| Bag of words | 1.44 | - |
+| TF-IDF | 1.20 | - |
+| Word2Vec | 1.26 | 0.96 |
+| LSTM | 1.44 | 1.00 |
+| XGBoost | 1.06 | 0.57 |
+
+Note public LB better loss than validation.
+
+### Basic RNN models
+
+### HATT
+
+### Jupyter notebook
+
+## Conclusions
+
+
+## Apendix: How to reproduce the experiments in TensorPort
+
+
+
 ```bash 
 python src/preprocess_data.py
 python src/word2vec_process_data.py
