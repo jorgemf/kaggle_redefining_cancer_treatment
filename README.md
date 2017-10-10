@@ -85,6 +85,7 @@ In the beginning of the kaggle competition the test set contained 5668 samples w
  |9|37|
  
  |class|1|2|3|4|5|6|7|8|9|
+ |-|-|-|-|-|-|-|-|-|-|
  |number of samples|566|452|89|686|242|273|952|19|37|
  
  ### Preprocessing
