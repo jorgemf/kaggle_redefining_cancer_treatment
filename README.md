@@ -149,6 +149,12 @@ Analyzing the algorithms the deep learning model based on LSTM cells doesn't see
 
 ### Jupyter notebook
 
+Similar to the previous model but with a different way to apply the attention I created a kernel in kaggle for the competition: https://www.kaggle.com/jorgemf/rnn-gru-bidirectional-attentional-context. The network was trained for 4 epochs with the training and validation sets and submitted the results to kaggle. I used both the training and validation sets in order to increase the final training set and get better results. The 4 epochs was chosen because in previous experiments the model was overfittin after the 4th epoch. It scored 0.93 in the public leaderboard and 2.8 in the private leaderboard.
+
+The confusion matrix shows a relation between the classes 1 and 4 and also between the classes 2 and 7. The classes 3, 8 and 9 have so few examples in the datasets (less than 100 i n the training set) that the model didn't learn them.
+
+![Confusion matrix](https://github.com/jorgemf/kaggle_redefining_cancer_treatment/confusion_matrix.png "Confusion matrix")
+
 ## Conclusions
 
 The kaggle competition had 2 stages due to the initial test set was made public and it made the competition irrelevant as anyone could submit the perfect predictions. That is why the initial test set was made public and a new set was created with the papers published during the last 2 months of the competition. This lead to a smaller dataset for test, around 150 samples, that needed to be distributed between the public and the private leaderboard. When the private leaderboard was made public all the models got really bad results. Almost all models increased the loss around 1.5-2 points. The huge increase in the loss means two things. First, the new test dataset contained new information that the algorithms didn't learn with the training dataset and couldn't make correct predictions. This is normal as new papers try novelty approaches to problems, so it is almost completely impossible for an algorithm to predict this novelty approaches. Second, the training dataset was small and contained a huge amount of text per sample, so it was easy to overfit the models.
