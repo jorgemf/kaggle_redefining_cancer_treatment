@@ -153,7 +153,7 @@ Similar to the previous model but with a different way to apply the attention I 
 
 The confusion matrix shows a relation between the classes 1 and 4 and also between the classes 2 and 7. The classes 3, 8 and 9 have so few examples in the datasets (less than 100 i n the training set) that the model didn't learn them.
 
-![Confusion matrix](https://github.com/jorgemf/kaggle_redefining_cancer_treatment/confusion_matrix.png "Confusion matrix")
+![Confusion matrix](https://raw.githubusercontent.com/jorgemf/kaggle_redefining_cancer_treatment/master/confusion_matrix.png "Confusion matrix")
 
 ## Conclusions
 
