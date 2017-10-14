@@ -28,7 +28,7 @@ There are variants of the previous algorithms, for example the [term frequency�
 
 [Word2Vec](https://arxiv.org/abs/1301.3781) is not an algorithm for text classification but an algorithm to compute vector representations of words from very large datasets. The peculiarity of word2vec is that the words that share common context in the text are vectors located in the same space. For example, countries would be close to each other in the vector space. Another property of this algorithm is that some concepts are encoded as vectors, for example the gender is encoded as a vector in such way that the next equation is true: "king - male + female = queen", the result of the math operations is a vector very close to "queen".
 
-Using the word representations provided by Word2Vec we can apply math operations to words and so, new algorithms for the text classification as the deep learning algorithms we will see later.
+Using the word representations provided by Word2Vec we can apply math operations to words and so, we can use algorithms like [Support Vector Machines (SVM)](https://arxiv.org/abs/1301.2785v1) or the deep learning algorithms we will see later. 
 
 There are two ways to train a Word2Vec model:
 [Continuous Bag-of-Words, also knows as CBOW, and the Skip-Gram](https://arxiv.org/abs/1301.3781). Given a context for a word, usually its adjacent words, we can predict the word with the context (CBOW) or predict the context with the word (Skip-Gram). Both algorithms are similar but Skip-Gram seems to [produce better results for large datasets](http://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf).
@@ -39,20 +39,42 @@ Besides the linear context we described before, other type of context as a [depe
 
 [Doc2Vector](https://arxiv.org/abs/1405.4053) or Paragraph2Vector is a variation of Word2Vec that can be used for text classification. This algorithm tries to fix the weakness of traditional algorithms that do not consider the order of the words and also their semantics. 
 
-This algorithm is similar to Word2Vec, it also learns the vector representations of the words at the same time it learns the vector representation of the document. We consider the document as part of the context for the words. Once we train the algorithm we can get the vector of new documents doing the same training in these new documents but with the word encodings fixed, so it only learns the vector of the documents. Then we can apply a clustering algorithm or find the closest document in the training set in order to make a prediction.
+This algorithm is similar to Word2Vec, it also learns the vector representations of the words at the same time it learns the vector representation of the document. It considers the document as part of the context for the words. Once we train the algorithm we can get the vector of new documents doing the same training in these new documents but with the word encodings fixed, so it only learns the vector of the documents. Then we can apply a clustering algorithm or find the closest document in the training set in order to make a prediction.
 
 ### Deep learning models
 
 
+
+
+[Sequence to Sequence Learning
+with Neural Networks](http://papers.nips.cc/paper/5346-sequence-to-sequence-learning-with-neural-networks.pdf)
+
 #### LSTM / GRU
 
-#### CNN + LSTM
+Long Short Term Memory (LSTM) cells are state of the art when we want to process a sequence of data as text or sound. For example, in [3] authors uses LSTM in a generative and discriminative text classifier. LSTM also has been used with CNN in a model the authors call C-LSTM [4].
+
+#### CNN
+
+Convolutional Neural Networks (CNN) are deeply used in image classification but they also have been applied to text classification. Some researches has done use them with words [1] and others with characters [2]
 
 #### QRNN
 
-#### HATT
+#### Attention
+
+Recently, some authors have included attention in their models [5]. The attention mechanism seems to help the network to focus on the important parts and get better results.
 
 #### Other
+
+[1] A Latent Semantic Model with Convolutional-Pooling Structure for Information Retrieval (2014)
+[2] Character-level Convolutional Networks for Text Classification (2015)
+[] Deep Learning applied to NLP (2017) (Convolutional NN to Text) 
+[] Recurrent Residual Learning for Sequence Classification (2016)
+[3] Generative and Discriminative Text Classification with Recurrent Neural Networks (2017)
+[4] A C-LSTM Neural Network for Text Classification (2015)
+[5] Attention-based LSTM Network for Cross-Lingual Sentiment Classification (2016)
+[6] Bag of Tricks for Efficient Text Classification (2016)
+[] Recurrent Neural Network for Text Classification with Multi-Task Learning (2016) Using same model for multiple task
+[] Depthwise Separable Convolutions for Neural Machine Translation (2017) Slicenet
 
 
 
@@ -76,7 +98,7 @@ In the beginning of the kaggle competition the test set contained 5668 samples w
  |-|-|-|-|-|-|-|-|-|-|
  |number of samples|566|452|89|686|242|273|952|19|37|
  
- ### Preprocessing
+### Preprocessing
  
  Probably the most important task of this challenge is how to model the text in order to apply a classifier. As we don’t have deeply understanding of the domain we are going to keep the transformation of the data as simple as possible and let the deep learning algorithm do all the hard work for us. But, most probably, the results would improve with a better model to extract features from the dataset.
 
@@ -88,7 +110,7 @@ We do several things to clean the data:
 
 Another approach is to use an already 
  
- ### Data augmentation
+### Data augmentation
  
  Our dataset is very limited for a deep learning algorithm, we only count with 3322 training samples. In order to avoid overfitting we need to increase the size of the dataset and try to simplify the deep learning model.
  
@@ -124,7 +146,7 @@ The context is generated by the 2 words adjacent to the target word and 2 random
 
 ### Competition results
 
-As a baseline here we show some results of some competitors that made their kernel public. This are the kernels.
+As a baseline here we show some results of some competitors that made their kernel public. These are the kernels:
 - [Bag of Words, TF-IDF, Word2Vec, LSTM](https://www.kaggle.com/reiinakano/basic-nlp-bag-of-words-tf-idf-word2vec-lstm)
 - [XGBoost](https://www.kaggle.com/the1owl/redefining-treatment-0-57456)
 
@@ -141,17 +163,42 @@ The results of those algorithms are shown in the next table. In the case of this
 
 In general the public leaderboard of the competition shows a better results than the validation score in their test. This could be due a byas in the dataset of the public leaderboard. A different distribution of the classes in the dataset could explain this byas but as I analyzed this dataset when it was published I saw the distribution of the classes was similar.
 
-Analyzing the algorithms the deep learning model based on LSTM cells doesn't seem to get good results compared to the other algorithms. But as one of the authors of those results explanined, the LSTM model seems to have a better distributed confusion matrix compared with the other algorithms. He concludes it was worth to keep analyzing the LSTM model and use longer sequences in order to get better results. We will see later in other experiments that longer sequences didn't lead to better results.
+Analyzing the algorithms the deep learning model based on LSTM cells doesn't seem to get good results compared to the other algorithms. But as one of the authors of those results explained, the LSTM model seems to have a better distributed confusion matrix compared with the other algorithms. He concludes it was worth to keep analyzing the LSTM model and use longer sequences in order to get better results. We will see later in other experiments that longer sequences didn't lead to better results.
 
-### Basic RNN models
+### Deep learning models
 
-### HATT
+First we wanted to analyze how the length of the text affected the loss of the models with a simple 3-layer GRU network with 200 hidden neurons per layer. We also checked whether adding the last part, what we think are the conclusions of the paper, make any improvements. We added the steps per second in order to compare the speed the algorithms were training. We trained the models for 10 epochs with a batch size of 32 and a learning rate of 0.001 with 0.85 decay every 1000 steps. We observed these were good parameters for all models. You can see the results in the next table:
+
+| Algorithm | Validation Loss | Validation Accuracy | Steps per second |
+|-|-|-|
+| First 1000 words                      |   |   |   |
+| First 2000 words                      |   |   |   |
+| First 3000 words                      |   |   |   |
+| First 5000 words                      |   |   |   |
+| First 10000 words                     |   |   |   |
+| First 3000 words + Last 3000 words    |   |   |   |
+
+A relative short text was getting better results than using longer text. It was also much faster than. We think this could be because longer sequences make the GRU cells to forget the initial part of the sequence, which could be more relevant for the classification, or because longer sequences had more noise and the model cannot learn anything or trends to overfit the training set. Using the last part of the text also improved the models. We used this variant with the initial and final text for training different models:
+
+| Algorithm | Validation Loss | Validation Accuracy | Steps per second |
+|-|-|-|
+| 3-layer GRU                       |   |   |   |
+| Bidirectional GRU                 |   |   |   |
+| CNN + GRU                         |   |   |   |
+| HATT                              |   |   |   |
+| HATT + gene-variation context     |   |   |   |
+
+
+
+
+
+
 
 ### Jupyter notebook
 
-Similar to the previous model but with a different way to apply the attention I created a kernel in kaggle for the competition: https://www.kaggle.com/jorgemf/rnn-gru-bidirectional-attentional-context. The network was trained for 4 epochs with the training and validation sets and submitted the results to kaggle. I used both the training and validation sets in order to increase the final training set and get better results. The 4 epochs was chosen because in previous experiments the model was overfittin after the 4th epoch. It scored 0.93 in the public leaderboard and 2.8 in the private leaderboard.
+Similar to the previous model but with a different way to apply the attention I created a kernel in kaggle for the competition: [RNN + GRU + bidirectional + Attentional context](https://www.kaggle.com/jorgemf/rnn-gru-bidirectional-attentional-context). The network was trained for 4 epochs with the training and validation sets and submitted the results to kaggle. I used both the training and validation sets in order to increase the final training set and get better results. The 4 epochs was chosen because in previous experiments the model was overfitting after the 4th epoch. It scored 0.93 in the public leaderboard and 2.8 in the private leaderboard.
 
-The confusion matrix shows a relation between the classes 1 and 4 and also between the classes 2 and 7. The classes 3, 8 and 9 have so few examples in the datasets (less than 100 i n the training set) that the model didn't learn them.
+The confusion matrix shows a relation between the classes 1 and 4 and also between the classes 2 and 7. The classes 3, 8 and 9 have so few examples in the datasets (less than 100 in the training set) that the model didn't learn them.
 
 ![Confusion matrix](https://raw.githubusercontent.com/jorgemf/kaggle_redefining_cancer_treatment/master/confusion_matrix.png "Confusion matrix")
 
