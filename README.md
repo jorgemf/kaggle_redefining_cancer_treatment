@@ -94,9 +94,12 @@ One of the things we need to do first is to clean the text as it from papers and
 
 In the beginning of the kaggle competition the test set contained 5668 samples while the train set only 3321. The reason was most of the test samples were fake in order to not to extract any information from them. Later in the competition this test set was made public with its real classes and only contained 987 samples. We will use the test dataset of the competition as our validation dataset in the experiments. Every train sample is classified in one of the 9 classes, which are very unbalanced.
   
+
+<div style="text-align:center">
  |class|1|2|3|4|5|6|7|8|9|
- |-|-|-|-|-|-|-|-|-|-|
+ |-|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
  |number of samples|566|452|89|686|242|273|952|19|37|
+ </div>
  
 ### Preprocessing
  
@@ -152,14 +155,16 @@ As a baseline here we show some results of some competitors that made their kern
 
 The results of those algorithms are shown in the next table. In the case of this experiments the validation set was selected from the initial training set.
 
+<div style="text-align:center">
 | Algorithm | Validation Loss | Validation Accuracy| Public Leaderboard Loss |
-|-|-|-|-|
+|-|:-:|:-:|:-:|
 | Bag of words          | 1.65 | 48% | - |
 | Random Forest         | 1.44 | 50% | - |
 | TF-IDF + SVC          | 1.20 | 55% | - |
 | Word2Vec + XGBoost    | 1.26 | 54% | 0.96 |
 | LSTM                  | 1.44 | 48% | 1.00 |
 | XGBoost               | 1.06 | - | 0.57 |
+</div>
 
 In general the public leaderboard of the competition shows a better results than the validation score in their test. This could be due a byas in the dataset of the public leaderboard. A different distribution of the classes in the dataset could explain this byas but as I analyzed this dataset when it was published I saw the distribution of the classes was similar.
 
@@ -169,24 +174,29 @@ Analyzing the algorithms the deep learning model based on LSTM cells doesn't see
 
 First we wanted to analyze how the length of the text affected the loss of the models with a simple 3-layer GRU network with 200 hidden neurons per layer. We also checked whether adding the last part, what we think are the conclusions of the paper, make any improvements. We added the steps per second in order to compare the speed the algorithms were training. We trained the models for 10 epochs with a batch size of 32 and a learning rate of 0.001 with 0.85 decay every 1000 steps. We observed these were good parameters for all models. You can see the results in the next table:
 
+<div style="text-align:center">
 | Algorithm | Validation Loss | Validation Accuracy | Steps per second |
-|-|-|-|
+|-|:-:|:-:|:-:|
 | First 1000 words                      |   |   |   |
 | First 2000 words                      |   |   |   |
 | First 3000 words                      |   |   |   |
 | First 5000 words                      |   |   |   |
 | First 10000 words                     |   |   |   |
 | First 3000 words + Last 3000 words    |   |   |   |
+</div>
 
 A relative short text was getting better results than using longer text. It was also much faster than. We think this could be because longer sequences make the GRU cells to forget the initial part of the sequence, which could be more relevant for the classification, or because longer sequences had more noise and the model cannot learn anything or trends to overfit the training set. Using the last part of the text also improved the models. We used this variant with the initial and final text for training different models:
 
+
+<div style="text-align:center">
 | Algorithm | Validation Loss | Validation Accuracy | Steps per second |
-|-|-|-|
+|-|:-:|:-:|:-:|
 | 3-layer GRU                       |   |   |   |
 | Bidirectional GRU                 |   |   |   |
 | CNN + GRU                         |   |   |   |
 | HATT                              |   |   |   |
 | HATT + gene-variation context     |   |   |   |
+</div>
 
 
 
@@ -200,7 +210,9 @@ Similar to the previous model but with a different way to apply the attention I 
 
 The confusion matrix shows a relation between the classes 1 and 4 and also between the classes 2 and 7. The classes 3, 8 and 9 have so few examples in the datasets (less than 100 in the training set) that the model didn't learn them.
 
+<div style="text-align:center">
 ![Confusion matrix](https://raw.githubusercontent.com/jorgemf/kaggle_redefining_cancer_treatment/master/confusion_matrix.png "Confusion matrix")
+</div>
 
 ## Conclusions
 
