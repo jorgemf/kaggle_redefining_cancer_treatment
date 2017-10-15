@@ -1,8 +1,10 @@
-[Read this in medium](https://medium.com/@jorgemf/personalized-medicine-redefining-cancer-treatment-by-deep-learning-f6c64a366fff)
+> [Read this in medium](https://medium.com/@jorgemf/personalized-medicine-redefining-cancer-treatment-by-deep-learning-f6c64a366fff)
 
 > Disclaimer: This work has been supported by [Good AI](http://goodailab.com) Lab and all the experiments has been trained using their platform [TensorPort](https://tensorport.com).
 
-# Personalized Medicine: Redefining Cancer Treatment by deep learning
+> [Appendix: How to reproduce the experiments in TensorPort](#apendix-how-to-reproduce-the-experiments-in-tensorport)
+
+# Personalized Medicine: Redefining Cancer Treatment with deep learning
 
 ## Introduction
 
@@ -179,7 +181,7 @@ The kaggle competition had 2 stages due to the initial test set was made public 
 
 Regardless the deep learning model shows worse results in the validation set, the new test set in the competition proved that the text classification for papers is a very difficult task and that even good models with the currently available data could be completely useless with new data. As the research evolves, researchers take new approaches to address problems which cannot be predicted. With a bigger sample of papers we might create better classifiers for this type of problems and this is something worth to explore in the future. These new classifiers might be able to find common data in the research that might be useful, not only to classify papers, but also to lead new research approaches.
 
-## Apendix: How to reproduce the experiments in TensorPort
+## Appendix: How to reproduce the experiments in TensorPort
 
 
 ```bash 
