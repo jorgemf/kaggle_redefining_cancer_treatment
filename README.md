@@ -2,7 +2,7 @@
 
 > Disclaimer: This work has been supported by [Good AI](http://goodailab.com) Lab and all the experiments has been trained using their platform [TensorPort](https://tensorport.com).
 
-> [Appendix: How to reproduce the experiments in TensorPort](#apendix-how-to-reproduce-the-experiments-in-tensorport)
+> [Appendix: How to reproduce the experiments in TensorPort](https://github.com/jorgemf/kaggle_redefining_cancer_treatment#apendix-how-to-reproduce-the-experiments-in-tensorport)
 
 # Personalized Medicine: Redefining Cancer Treatment with deep learning
 
