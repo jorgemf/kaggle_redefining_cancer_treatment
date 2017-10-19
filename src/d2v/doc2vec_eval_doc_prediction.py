@@ -2,8 +2,8 @@ import sys
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.training import training_util
-from . import evaluator, metrics
-from .configuration import *
+from .. import evaluator, metrics
+from ..configuration import *
 from .doc2vec_train_doc_prediction import doc2vec_prediction_model
 from .doc2vec_train_doc_prediction import DocPredictionDataset
 

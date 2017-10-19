@@ -7,9 +7,9 @@ import numpy as np
 from tensorflow.python.training import training_util
 from tensorflow.contrib.tensorboard.plugins import projector
 from tensorflow.contrib import layers
-from . import trainer
-from .tf_dataset_generator import TFDataSetGenerator
-from .configuration import *
+from .. import trainer
+from ..tf_dataset_generator import TFDataSetGenerator
+from ..configuration import *
 
 class Doc2VecDataset(TFDataSetGenerator):
     """

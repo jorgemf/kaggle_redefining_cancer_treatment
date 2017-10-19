@@ -5,10 +5,10 @@ import numpy as np
 import random
 from tensorflow.python.training import training_util
 from tensorflow.contrib import layers
-from . import trainer, metrics
-from .tf_dataset_generator import TFDataSetGenerator
-from .configuration import *
-from .text_classification_train import _load_embeddings
+from .. import trainer, metrics
+from ..tf_dataset_generator import TFDataSetGenerator
+from ..configuration import *
+from ..rnn.text_classification_train import _load_embeddings
 
 
 class DocPredictionDataset(TFDataSetGenerator):

@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
 from itertools import groupby
-from .configuration import *
-from .tf_dataset import TFDataSet
+from ..configuration import *
+from ..tf_dataset import TFDataSet
 
 
 def _padding(arr, pad, token=-1):

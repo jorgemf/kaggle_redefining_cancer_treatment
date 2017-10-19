@@ -7,9 +7,9 @@ import numpy as np
 from tensorflow.python.training import training_util
 from tensorflow.contrib import slim
 from tensorflow.python.ops import variables as tf_variables
-from .configuration import *
-from . import trainer, evaluator, metrics
-from .task_spec import get_task_spec
+from ..configuration import *
+from .. import trainer, evaluator, metrics
+from ..task_spec import get_task_spec
 from .text_classification_dataset import TextClassificationDataset
 
 
@@ -268,7 +268,7 @@ def main(model, name, sentence_split=False, batch_size = TC_BATCH_SIZE):
         evaluator.run()
     else:
         # training
-        task_spec = get_task_spec(with_evaluator=False)  # TODO change to true to use validation
+        task_spec = get_task_spec(with_evaluator=True) 
         if task_spec.join_if_ps():
             # join if it is a parameters server and do nothing else
             return

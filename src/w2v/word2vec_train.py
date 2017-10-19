@@ -9,10 +9,10 @@ import shutil
 from tensorflow.python.training import training_util
 from tensorflow.contrib.tensorboard.plugins import projector
 from tensorflow.contrib import layers
-import src.trainer as trainer
-from src.tf_dataset_generator import TFDataSetGenerator
-from src.word2vec_process_data import load_word2vec_data
-from src.configuration import *
+from .. import trainer
+from ..tf_dataset_generator import TFDataSetGenerator
+from ..w2v.word2vec_process_data import load_word2vec_data
+from ..configuration import *
 
 
 class Word2VecDataset(TFDataSetGenerator):

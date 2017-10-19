@@ -1,8 +1,7 @@
 import tensorflow as tf
 from tensorflow.contrib import slim
-from tensorflow.python.framework import ops
 import tensorflow.contrib.layers as layers
-from .configuration import *
+from ..configuration import *
 from .text_classification_train import main
 
 

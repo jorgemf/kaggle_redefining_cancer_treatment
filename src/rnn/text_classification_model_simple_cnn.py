@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.contrib.layers.python.layers import layers
-from .configuration import *
+from ..configuration import *
 from .text_classification_model_simple import ModelSimple
 from .text_classification_train import main
 

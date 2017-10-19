@@ -5,11 +5,11 @@ from datetime import timedelta
 import shutil
 import sys
 from tensorflow.contrib import layers
-from . import trainer
+from .. import trainer
 from .doc2vec_train_word_embeds import Doc2VecDataset
-from .text_classification_train import _load_embeddings
+from ..rnn.text_classification_train import _load_embeddings
 from tensorflow.python.training import training_util
-from .configuration import *
+from ..configuration import *
 
 
 class Doc2VecTrainerEval(trainer.Trainer):
