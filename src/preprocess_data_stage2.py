@@ -1,6 +1,6 @@
 # coding=utf-8
 from .preprocess_data import *
-from .text_classification_process_data import *
+from .rnn.text_classification_process_data import *
 
 def _filter_clear_val_set(val_set):
     with open(os.path.join(DIR_DATA, 'stage1_solution_filtered.csv'), 'rb') as file:

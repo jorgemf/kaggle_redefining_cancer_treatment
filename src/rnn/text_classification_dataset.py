@@ -24,6 +24,7 @@ class TextClassificationDataset(TFDataSet):
     def __init__(self, type='train', sentence_split=False):
         """
         :param str type: type of set, either 'train' or 'test'
+        :param bool sentence_split: whether to split the doc in sentences or use only words
         """
         data_files = os.path.join(DIR_DATA_TEXT_CLASSIFICATION, '{}_set'.format(type))
         if type == 'train' or type == 'val':

@@ -4,7 +4,7 @@ from src.task_spec import get_data_path
 # directories for the data
 
 DIR_DATA = 'data'
-DIR_GENERATED_DATA = get_data_path(dataset_name='jorgemf/kaggle-redefining-cancere-treatment',
+DIR_GENERATED_DATA = get_data_path(dataset_name='jorgemf/kaggle-redefining-cancer-treatment-data',
                                    local_root=DIR_DATA,
                                    local_repo='generated')
 DIR_DATA_WORD2VEC = os.path.join(DIR_GENERATED_DATA, 'word2vec')
@@ -25,13 +25,14 @@ DIR_WIKIPEDIA_GENES = os.path.join(DIR_GENERATED_DATA, 'gen')
 
 VOCABULARY_SIZE = 40000
 EMBEDDINGS_SIZE = 300
-MAX_WORDS = 3000  # 40000  # maximum number of words in the document
-MAX_SENTENCES = 200  # 1000  # maximum number of sentences in the document
-MAX_WORDS_IN_SENTENCE = 40  # 60  # maximum number of words per sentence in the document
+MAX_WORDS = 3000  # maximum number of words in the document
+MAX_SENTENCES = 200  # maximum number of sentences in the document
+MAX_WORDS_IN_SENTENCE = 40  # maximum number of words per sentence in the document
+USE_END_SEQUENCE = False  # Whether or not to use the end of the sequence in the models
 
 # word2vec
 
-W2V_EPOCHS = 10  # iterations over the whole dataset
+W2V_EPOCHS = 4  # iterations over the whole dataset
 W2V_BATCH_SIZE = 128  # batch size for the training
 W2V_WINDOW_ADJACENT_WORDS = 1  # adjacent words to be added to the context
 W2V_CLOSE_WORDS_SIZE = 2  # close words (non-adjacent) to be added to the context
@@ -43,7 +44,7 @@ W2V_LEARNING_RATE_DECAY_STEPS = 100000  # steps to decay the learning rate
 
 # doc2vec
 
-D2V_EPOCHS = 10  # iterations over the whole dataset
+D2V_EPOCHS = 4  # iterations over the whole dataset
 D2V_BATCH_SIZE = 128  # batch size for the training
 D2V_CONTEXT_SIZE = 5  # size of the context to predict the word
 D2V_NEGATIVE_NUM_SAMPLES = 64  # number of negative examples to sample for training

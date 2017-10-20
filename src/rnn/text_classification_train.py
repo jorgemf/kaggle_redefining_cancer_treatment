@@ -30,8 +30,10 @@ class TextClassificationTrainer(trainer.Trainer):
     more details.
     """
 
-    def __init__(self, dataset, text_classification_model, log_dir=DIR_TC_LOGDIR, task_spec=None):
+    def __init__(self, dataset, text_classification_model, log_dir=DIR_TC_LOGDIR,
+                 use_end_sequence=False, task_spec=None):
         self.text_classification_model = text_classification_model
+        self.use_end_sequence = use_end_sequence
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         super(TextClassificationTrainer, self).__init__(log_dir=log_dir, dataset=dataset,
@@ -76,6 +78,8 @@ class TextClassificationTrainer(trainer.Trainer):
 
     def create_graph(self, dataset_tensor, batch_size):
         input_text_begin, input_text_end, gene, variation, expected_labels = dataset_tensor
+        if not self.use_end_sequence:
+            input_text_end = None
         return self.model(input_text_begin, input_text_end, gene, variation, expected_labels, batch_size)
 
     def step(self, session, graph_data):
@@ -98,7 +102,9 @@ class TextClassificationTrainer(trainer.Trainer):
 class TextClassificationTest(evaluator.Evaluator):
     """Evaluator for distributed training"""
 
-    def __init__(self, dataset, text_classification_model, output_path, log_dir=DIR_TC_LOGDIR):
+    def __init__(self, dataset, text_classification_model, output_path, log_dir=DIR_TC_LOGDIR,
+                 use_end_sequence=False):
+        self.use_end_sequence = use_end_sequence
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         super(TextClassificationTest, self).__init__(checkpoints_dir=log_dir, dataset=dataset,
@@ -134,6 +140,8 @@ class TextClassificationTest(evaluator.Evaluator):
 
     def create_graph(self, dataset_tensor, batch_size):
         input_text_begin, input_text_end, gene, variation, expected_labels = dataset_tensor
+        if not self.use_end_sequence:
+            input_text_end = None
         graph_data = self.model(input_text_begin, input_text_end, gene, variation,
                                 expected_labels, batch_size)
         return graph_data
@@ -179,7 +187,9 @@ class TextClassificationTest(evaluator.Evaluator):
 class TextClassificationEval(evaluator.Evaluator):
     """Evaluator for text classification"""
 
-    def __init__(self, dataset, text_classification_model, output_path, log_dir=DIR_TC_LOGDIR):
+    def __init__(self, dataset, text_classification_model, output_path, log_dir=DIR_TC_LOGDIR,
+                 use_end_sequence=False):
+        self.use_end_sequence = use_end_sequence
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         super(TextClassificationEval, self).__init__(checkpoints_dir=log_dir,
@@ -210,6 +220,8 @@ class TextClassificationEval(evaluator.Evaluator):
 
     def create_graph(self, dataset_tensor, batch_size):
         input_text_begin, input_text_end, gene, variation = dataset_tensor
+        if not self.use_end_sequence:
+            input_text_end = None
         return self.model(input_text_begin, input_text_end, gene, variation, batch_size)
 
     def after_create_session(self, session, coord):
@@ -229,13 +241,15 @@ class TextClassificationEval(evaluator.Evaluator):
 import logging
 
 
-def main(model, name, sentence_split=False, batch_size = TC_BATCH_SIZE):
+def main(model, name, sentence_split=False, end_sequence=USE_END_SEQUENCE, batch_size=TC_BATCH_SIZE):
     """
     Main method to execute the text_classification models
     :param ModelSimple model: object model based on ModelSimple
     :param str name: name of the model
     :param bool sentence_split: whether to split the dataset in sentneces or not,
     only used for hatt model
+    :param bool end_sequence: whether to use or not the end of the sequences in the models
+    :param int batch_size: batch size of the models
     """
     logging.getLogger().setLevel(logging.INFO)
     log_dir = '{}_{}'.format(DIR_TC_LOGDIR, name)
@@ -244,27 +258,31 @@ def main(model, name, sentence_split=False, batch_size = TC_BATCH_SIZE):
         dataset = TextClassificationDataset(type='train', sentence_split=sentence_split)
         tester = TextClassificationTest(dataset=dataset, text_classification_model=model,
                                         log_dir=log_dir,
-                                        output_path=os.path.join(log_dir, 'test_trainset'))
+                                        output_path=os.path.join(log_dir, 'test_trainset'),
+                                        use_end_sequence=end_sequence)
         tester.run()
     elif len(sys.argv) > 1 and sys.argv[1] == 'validate':
         dataset = TextClassificationDataset(type='val', sentence_split=sentence_split)
         tester = TextClassificationTest(dataset=dataset, text_classification_model=model,
                                         log_dir=log_dir,
-                                        output_path=os.path.join(log_dir, 'validate'))
+                                        output_path=os.path.join(log_dir, 'validate'),
+                                        use_end_sequence=end_sequence)
         tester.run()
     elif len(sys.argv) > 1 and sys.argv[1] == 'eval':
         # evaluate the data of the test dataset. We submit this output to kaggle
         dataset = TextClassificationDataset(type='test', sentence_split=sentence_split)
         evaluator = TextClassificationEval(dataset=dataset, text_classification_model=model,
                                            log_dir=log_dir,
-                                           output_path=os.path.join(log_dir, 'test'))
+                                           output_path=os.path.join(log_dir, 'test'),
+                                           use_end_sequence=end_sequence)
         evaluator.run()
     elif len(sys.argv) > 1 and sys.argv[1] == 'eval_stage2':
         # evaluate the data of the test dataset. We submit this output to kaggle
         dataset = TextClassificationDataset(type='stage2_test', sentence_split=sentence_split)
         evaluator = TextClassificationEval(dataset=dataset, text_classification_model=model,
                                            log_dir=log_dir,
-                                           output_path=os.path.join(log_dir, 'test_stage2'))
+                                           output_path=os.path.join(log_dir, 'test_stage2'),
+                                           use_end_sequence=end_sequence)
         evaluator.run()
     else:
         # training
@@ -278,10 +296,12 @@ def main(model, name, sentence_split=False, batch_size = TC_BATCH_SIZE):
             # evaluator running in the last worker
             tester = TextClassificationTest(dataset=dataset, text_classification_model=model,
                                             log_dir=log_dir,
-                                            output_path=os.path.join(log_dir, 'val'))
+                                            output_path=os.path.join(log_dir, 'val'),
+                                            use_end_sequence=end_sequence)
             tester.run()
         else:
             dataset = TextClassificationDataset(type='train', sentence_split=sentence_split)
             trainer = TextClassificationTrainer(dataset=dataset, text_classification_model=model,
-                                                log_dir=log_dir, task_spec=task_spec)
+                                                log_dir=log_dir, use_end_sequence=end_sequence,
+                                                task_spec=task_spec)
             trainer.run(epochs=TC_EPOCHS, batch_size=batch_size)

@@ -80,13 +80,17 @@ class ModelHATT(ModelSimple):
                                     embeddings_size, num_hidden, dropout, word_output_size,
                                     sentence_output_size, training)
 
-        with tf.variable_scope('text_end'):
-            hatt_end = self._hatt(input_text_end, embeddings, gene, variation, batch_size,
-                                  embeddings_size, num_hidden, dropout, word_output_size,
-                                  sentence_output_size, training)
+        if input_text_end is not None:
+            with tf.variable_scope('text_end'):
+                hatt_end = self._hatt(input_text_end, embeddings, gene, variation, batch_size,
+                                      embeddings_size, num_hidden, dropout, word_output_size,
+                                      sentence_output_size, training)
+
+            hatt = tf.concat([hatt_begin, hatt_end], axis=1)
+        else:
+            hatt = hatt_begin
 
         # classifier
-        hatt = tf.concat([hatt_begin, hatt_end], axis=1)
         logits = layers.fully_connected(hatt, num_output_classes, activation_fn=None)
         prediction = tf.nn.softmax(logits)
 

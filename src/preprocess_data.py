@@ -345,12 +345,13 @@ def load_or_parse_mutations_dataset(filename, dataset, genes,
             datasample.text = ' '.join(parsed_words)
             # variations
             parsed_variation = []
-            for word in datasample.variation.split():
-                if is_mutation(word, genes):
-                    parsed_variation.extend(split_mutation(word))
-                else:
-                    parsed_variation.append(word)
-            datasample.variation = ' '.join(parsed_variation)
+            if isinstance(datasample, DataSample):
+                for word in datasample.variation.split():
+                    if is_mutation(word, genes):
+                        parsed_variation.extend(split_mutation(word))
+                    else:
+                        parsed_variation.append(word)
+                datasample.variation = ' '.join(parsed_variation)
         saving_fn(filename, dataset)
     return loading_fn(filename)
 
