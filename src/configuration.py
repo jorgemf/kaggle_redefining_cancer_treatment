@@ -25,14 +25,14 @@ DIR_WIKIPEDIA_GENES = os.path.join(DIR_GENERATED_DATA, 'gen')
 
 VOCABULARY_SIZE = 40000
 EMBEDDINGS_SIZE = 300
-MAX_WORDS = 3000  # maximum number of words in the document
+MAX_WORDS = 1000  # maximum number of words in the document
 MAX_SENTENCES = 200  # maximum number of sentences in the document
 MAX_WORDS_IN_SENTENCE = 40  # maximum number of words per sentence in the document
 USE_END_SEQUENCE = False  # Whether or not to use the end of the sequence in the models
 
 # word2vec
 
-W2V_EPOCHS = 4  # iterations over the whole dataset
+W2V_EPOCHS = 2  # iterations over the whole dataset
 W2V_BATCH_SIZE = 128  # batch size for the training
 W2V_WINDOW_ADJACENT_WORDS = 1  # adjacent words to be added to the context
 W2V_CLOSE_WORDS_SIZE = 2  # close words (non-adjacent) to be added to the context
@@ -44,7 +44,7 @@ W2V_LEARNING_RATE_DECAY_STEPS = 100000  # steps to decay the learning rate
 
 # doc2vec
 
-D2V_EPOCHS = 4  # iterations over the whole dataset
+D2V_EPOCHS = 2  # iterations over the whole dataset
 D2V_BATCH_SIZE = 128  # batch size for the training
 D2V_CONTEXT_SIZE = 5  # size of the context to predict the word
 D2V_NEGATIVE_NUM_SAMPLES = 64  # number of negative examples to sample for training
@@ -62,11 +62,7 @@ D2V_DOC_LEARNING_RATE_DECAY_STEPS = 2000  # steps to decay the learning rate
 
 TD_DATA_SENTENCE_REMOVE_PERCENTAGE = 0.05  # ratio of sentences to delete from the samples
 TC_EPOCHS = 100  # iterations over the whole dataset
-TC_BATCH_SIZE = 8  # batch size for the training
-TC_BATCH_SIZE_SIMPLE = 32
-TC_BATCH_SIZE_BIDIRECTIONAL = 32
-TC_BATCH_SIZE_CNN = 32
-TC_BATCH_SIZE_HATT = 16
+TC_BATCH_SIZE = 24  # batch size for the training
 TC_MODEL_HIDDEN = 200  # hidden GRUCells for the model
 TC_MODEL_LAYERS = 3  # number of layers of the model
 TC_MODEL_DROPOUT = 0.8  # dropout during training in the model

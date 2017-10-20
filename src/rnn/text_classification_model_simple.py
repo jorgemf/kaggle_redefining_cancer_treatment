@@ -26,6 +26,9 @@ class ModelSimple(object):
         :param boolean training: whether the model is built for training or not
         :return Dict[str,tf.Tensor]: a dict with logits and prediction tensors
         """
+        input_text_begin = tf.reshape(input_text_begin, [batch_size, MAX_WORDS])
+        if input_text_end is not None:
+            input_text_end = tf.reshape(input_text_end, [batch_size, MAX_WORDS])
         embedded_sequence_begin, sequence_length_begin, \
         embedded_sequence_end, sequence_length_end, \
         gene, variation = \
@@ -207,4 +210,4 @@ class ModelSimple(object):
 
 
 if __name__ == '__main__':
-    main(ModelSimple(), 'simple', batch_size=TC_BATCH_SIZE_SIMPLE)
+    main(ModelSimple(), 'simple', batch_size=TC_BATCH_SIZE)

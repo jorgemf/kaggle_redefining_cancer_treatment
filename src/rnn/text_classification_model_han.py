@@ -5,7 +5,7 @@ from .text_classification_model_simple import ModelSimple
 from .text_classification_train import main
 
 
-class ModelHATT(ModelSimple):
+class ModelHAN(ModelSimple):
     def _create_embeddings(self, embeddings):
         embeddings_dimension = len(embeddings[0])
         embeddings = [[0.0] * embeddings_dimension] + embeddings
@@ -32,7 +32,7 @@ class ModelHATT(ModelSimple):
         embedded_gene = tf.squeeze(embedded_gene, axis=1)
         return embedded_gene, embedded_variation
 
-    def _hatt(self, input_words, embeddings, gene, variation, batch_size, embeddings_size,
+    def _han(self, input_words, embeddings, gene, variation, batch_size, embeddings_size,
               num_hidden, dropout, word_output_size, sentence_output_size, training=True):
         input_words = tf.reshape(input_words, [batch_size, MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
         embedded_sequence, sentences_length, words_length = \
@@ -76,13 +76,13 @@ class ModelHATT(ModelSimple):
         gene, variation = self._embed(embeddings, gene, variation)
 
         with tf.variable_scope('text_begin'):
-            hatt_begin = self._hatt(input_text_begin, embeddings, gene, variation, batch_size,
+            hatt_begin = self._han(input_text_begin, embeddings, gene, variation, batch_size,
                                     embeddings_size, num_hidden, dropout, word_output_size,
                                     sentence_output_size, training)
 
         if input_text_end is not None:
             with tf.variable_scope('text_end'):
-                hatt_end = self._hatt(input_text_end, embeddings, gene, variation, batch_size,
+                hatt_end = self._han(input_text_end, embeddings, gene, variation, batch_size,
                                       embeddings_size, num_hidden, dropout, word_output_size,
                                       sentence_output_size, training)
 
@@ -140,4 +140,4 @@ class ModelHATT(ModelSimple):
 
 
 if __name__ == '__main__':
-    main(ModelHATT(), 'hatt', sentence_split=True, batch_size=TC_BATCH_SIZE_HATT)
+    main(ModelHAN(), 'han', sentence_split=True, batch_size=TC_BATCH_SIZE_HATT)

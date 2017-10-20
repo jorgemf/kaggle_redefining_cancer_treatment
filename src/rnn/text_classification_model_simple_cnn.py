@@ -39,4 +39,4 @@ class ModelSimpleCNN(ModelSimple):
 
 
 if __name__ == '__main__':
-    main(ModelSimpleCNN(), 'cnn', batch_size=TC_BATCH_SIZE_CNN)
+    main(ModelSimpleCNN(), 'cnn', batch_size=TC_BATCH_SIZE)

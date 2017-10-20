@@ -33,4 +33,4 @@ class ModelSimpleBidirectional(ModelSimple):
         return output
 
 if __name__ == '__main__':
-    main(ModelSimpleBidirectional(), 'bidirectional', batch_size=TC_BATCH_SIZE_BIDIRECTIONAL)
+    main(ModelSimpleBidirectional(), 'bidirectional', batch_size=TC_BATCH_SIZE)
