@@ -33,7 +33,8 @@ class ModelHAN(ModelSimple):
         return embedded_gene, embedded_variation
 
     def _han(self, input_words, embeddings, gene, variation, batch_size, embeddings_size,
-              num_hidden, dropout, word_output_size, sentence_output_size, training=True):
+             num_hidden, dropout, word_output_size, sentence_output_size, training=True):
+
         input_words = tf.reshape(input_words, [batch_size, MAX_SENTENCES, MAX_WORDS_IN_SENTENCE])
         embedded_sequence, sentences_length, words_length = \
             self._embed_sequence_with_length(embeddings, input_words)
@@ -77,14 +78,14 @@ class ModelHAN(ModelSimple):
 
         with tf.variable_scope('text_begin'):
             hatt_begin = self._han(input_text_begin, embeddings, gene, variation, batch_size,
-                                    embeddings_size, num_hidden, dropout, word_output_size,
-                                    sentence_output_size, training)
+                                   embeddings_size, num_hidden, dropout, word_output_size,
+                                   sentence_output_size, training)
 
         if input_text_end is not None:
             with tf.variable_scope('text_end'):
                 hatt_end = self._han(input_text_end, embeddings, gene, variation, batch_size,
-                                      embeddings_size, num_hidden, dropout, word_output_size,
-                                      sentence_output_size, training)
+                                     embeddings_size, num_hidden, dropout, word_output_size,
+                                     sentence_output_size, training)
 
             hatt = tf.concat([hatt_begin, hatt_end], axis=1)
         else:

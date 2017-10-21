@@ -140,4 +140,4 @@ class ModelHATT(ModelSimple):
 
 
 if __name__ == '__main__':
-    main(ModelHATT(), 'hatt', sentence_split=True, batch_size=TC_BATCH_SIZE_HATT)
+    main(ModelHATT(), 'qrnn', batch_size=TC_BATCH_SIZE)

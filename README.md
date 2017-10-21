@@ -123,7 +123,7 @@ We train the model for 10 epochs with a batch size of 24 and a learning rate of 
 
 We use this model to test how the length of the sequences affect the performance. We test sequences with the first 1000, 2000, 3000, 5000 and 10000 words. We want to check whether adding the last part, what we think are the conclusions of the paper, makes any improvements, so we also tested this model with the first and last 3000 words. 
 
-The output of the RNN network is followed by a full connected layer with 128 hidden neurons and reul activation and another full connected layer with a softmax activation for the final prediction. In case of the model with the first and last words, both outputs are concatenated and used as input to the first fully connected layer. This set up is used for all the RNN models to make the final prediction.
+The output of the RNN network is concatenated with the embeddings of the gene and the variation. This concatenated layer is followed by a full connected layer with 128 hidden neurons and relu activation and another full connected layer with a softmax activation for the final prediction. In case of the model with the first and last words, both outputs are concatenated and used as input to the first fully connected layer along with the gene and variation. This set up is used for all the RNN models to make the final prediction, except in the ones we tell something different.
 
 The combination of the first and last words got the best results as we will see below, and was the configuration used for the rest of the models.
 
@@ -141,7 +141,9 @@ This model is 2 stacked CNN layers with 50 filters and a kernel size of 5 that p
 
 ### HAN
 
+This model is based in the model of [Hierarchical Attention Networks (HAN) for Document Classification](https://www.cs.cmu.edu/~diyiy/docs/naacl16.pdf) but we have replaced the context vector by the embeddings of the variation and the gene. This is, instead of learning the context vector as in the original model we provide the context information we already have.
 
+As this model uses the gene and variation in the context vector of the attention we do not use the same full connected layer to make the predictions as in the other models. We use a simple full connected layer with a softmax activation function.
 
 ## Results
 
@@ -188,7 +190,6 @@ A relative short text was getting better results than using longer text. It was 
 | Bidirectional GRU                 |   |   |   |
 | CNN + GRU                         |   |   |   |
 | QRNN                              |   |   |   |
-| HAN                               |   |   |   |
 | HAN + gene-variation context      |   |   |   |
 
 In the next image we show how the embeddings of the documents in doc2vec are mapped into a 3d space where each class is represented by a different color. We don't appreciate any clear aggrupation of the classes.
@@ -317,10 +318,10 @@ git commit -m "MAX_WORDS=1000 and USE_END_SEQUENCE=False"
 git push tensorpot master
 ```
 
-Launch a job in TensorPort
+Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
 ```sh
-
+tport run --name "simple-1000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 4 --ps-type "t2.small" --time-limit "24h00m"
 ```
 
 #### First 2000 words
@@ -339,6 +340,12 @@ git commit -m "MAX_WORDS=2000 and USE_END_SEQUENCE=False"
 git push tensorpot master
 ``` 
 
+Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
+
+```sh
+tport run --name "simple-2000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 4 --ps-type "t2.small" --time-limit "24h00m"
+```
+
 #### First 3000 words
 
 In `src/configuration.py` set these values:
@@ -354,6 +361,12 @@ and commit the changes:
 git commit -m "MAX_WORDS=3000 and USE_END_SEQUENCE=False"
 git push tensorpot master
 ``` 
+
+Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
+
+```sh
+tport run --name "simple-3000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 4 --ps-type "t2.small" --time-limit "24h00m"
+```
 
 #### First 5000 words
 
@@ -371,6 +384,12 @@ git commit -m "MAX_WORDS=5000 and USE_END_SEQUENCE=False"
 git push tensorpot master
 ``` 
 
+Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
+
+```sh
+tport run --name "simple-5000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 4 --ps-type "t2.small" --time-limit "24h00m"
+```
+
 #### First 10000 words
 
 In `src/configuration.py` set these values:
@@ -385,7 +404,13 @@ and commit the changes:
 ```sh
 git commit -m "MAX_WORDS=10000 and USE_END_SEQUENCE=False"
 git push tensorpot master
-``` 
+```  
+
+Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
+
+```sh
+tport run --name "simple-10000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 4 --ps-type "t2.small" --time-limit "24h00m"
+```
 
 #### First 3000 words + Last 3000 words  
 
@@ -401,12 +426,17 @@ and commit the changes:
 ```sh
 git commit -m "MAX_WORDS=3000 and USE_END_SEQUENCE=True"
 git push tensorpot master
-``` 
+```  
 
-We will use this configuration for the rest of the models.
+Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
+
+```sh
+tport run --name "simple-with_end-3000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 4 --ps-type "t2.small" --time-limit "24h00m"
+```
+
+We will use this configuration for the rest of the models executed in TensorPort.
 
 ### Experiments with different models
-
 
 #### Doc2Vec               
 
@@ -435,27 +465,35 @@ Finally, we evaluate the doc embeddings with the predictor of the second step:
 ```sh
 python -m src.d2v.doc2vec_eval_doc_prediction val
 ```
-       
-#### 3-layer GRU            
 
 #### Bidirectional GRU
 
+Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
+
+```sh
+tport run --name "bidirectional-gru-with_end-3000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_bidirectional" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 4 --ps-type "t2.small" --time-limit "24h00m"
+```
+
 #### CNN + GRU
+
+Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
+
+```sh
+tport run --name "cnn-with_end-3000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_cnn" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 4 --ps-type "t2.small" --time-limit "24h00m"
+```
 
 #### QRNN
 
-#### HAN
+Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
-## TensorPort
-
-```bash
-tport login
+```sh
+tport run --name "qrnn-with_end-3000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_qrnn" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 4 --ps-type "t2.small" --time-limit "24h00m"
 ```
 
-```bash 
-tport create job --name "word2vev-distributed-8" --project "jorgemf/kaggle-personalized-medicine-redefining-cancer-treatment-by-deep-learning" --datasets "jorgemf/kaggle-redefining-cancere-treatment"  --module "word2vec_train" --package-path "src" --python-version 3 --tf-version "1.2" --requirements "requirements.txt" --single-node --instance-type "t2.small" --time-limit "07h00m"
+#### HAN
 
-tport create job --name "word2vev-distributed-8" --project "jorgemf/kaggle-personalized-medicine-redefining-cancer-treatment-by-deep-learning" --datasets "jorgemf/kaggle-redefining-cancere-treatment"  --module "word2vec_train" --package-path "src" --python-version 3 --tf-version "1.2" --requirements "requirements.txt" --worker-replicas 3 --worker-type "p2.xlarge" --ps-replicas 1 --ps-type "c4.2xlarge"	 --time-limit "06h00m"
+Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
-tport run --job-id "word2vev-distributed-8"
+```sh
+tport run --name "han-with_end-3000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_han" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 4 --ps-type "t2.small" --time-limit "24h00m"
 ```
