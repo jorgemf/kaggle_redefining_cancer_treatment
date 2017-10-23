@@ -323,7 +323,7 @@ git push tensorpot master
 Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
 ```sh
-tport run --name "simple-1000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m"
+tport run --name "simple-1000" --project "$TPORT_USER/$PROJECT:$(git rev-parse HEAD):0" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m" --description ""
 ```
 
 #### First 2000 words
@@ -345,7 +345,7 @@ git push tensorpot master
 Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
 ```sh
-tport run --name "simple-2000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m"
+tport run --name "simple-2000" --project "$TPORT_USER/$PROJECT:$(git rev-parse HEAD)" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m" --description ""
 ```
 
 We could use 4 ps replicas with the basic plan in TensorPort but with 3 the data is better distributed among them. With 4 ps replicas 2 of them have very small data.
@@ -369,7 +369,7 @@ git push tensorpot master
 Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
 ```sh
-tport run --name "simple-3000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m"
+tport run --name "simple-3000" --project "$TPORT_USER/$PROJECT:$(git rev-parse HEAD)" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m" --description ""
 ```
 
 #### First 5000 words
@@ -391,7 +391,7 @@ git push tensorpot master
 Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
 ```sh
-tport run --name "simple-5000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m"
+tport run --name "simple-5000" --project "$TPORT_USER/$PROJECT:$(git rev-parse HEAD)" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m" --description ""
 ```
 
 #### First 10000 words
@@ -413,7 +413,7 @@ git push tensorpot master
 Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
 ```sh
-tport run --name "simple-10000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m"
+tport run --name "simple-10000" --project "$TPORT_USER/$PROJECT:$(git rev-parse HEAD)" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m" --description ""
 ```
 
 #### First 3000 words + Last 3000 words  
@@ -435,7 +435,7 @@ git push tensorpot master
 Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
 ```sh
-tport run --name "simple-with_end-3000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m"
+tport run --name "simple-with_end-3000" --project "$TPORT_USER/$PROJECT:$(git rev-parse HEAD)" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_simple" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m" --description ""
 ```
 
 We will use this configuration for the rest of the models executed in TensorPort.
@@ -475,7 +475,7 @@ python -m src.d2v.doc2vec_eval_doc_prediction val
 Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
 ```sh
-tport run --name "bidirectional-gru-with_end-3000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_bidirectional" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m"
+tport run --name "bidirectional-gru-with_end-3000" --project "$TPORT_USER/$PROJECT:$(git rev-parse HEAD)" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_bidirectional" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m" --description ""
 ```
 
 #### CNN + GRU
@@ -483,7 +483,7 @@ tport run --name "bidirectional-gru-with_end-3000" --project "$TPORT_USER/$PROJE
 Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
 ```sh
-tport run --name "cnn-with_end-3000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_cnn" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m"
+tport run --name "cnn-with_end-3000" --project "$TPORT_USER/$PROJECT:$(git rev-parse HEAD)" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_cnn" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m" --description ""
 ```
 
 #### QRNN
@@ -491,7 +491,7 @@ tport run --name "cnn-with_end-3000" --project "$TPORT_USER/$PROJECT" --datasets
 Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
 ```sh
-tport run --name "qrnn-with_end-3000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_qrnn" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m"
+tport run --name "qrnn-with_end-3000" --project "$TPORT_USER/$PROJECT:$(git rev-parse HEAD)" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_qrnn" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m" --description ""
 ```
 
 #### HAN
@@ -499,5 +499,5 @@ tport run --name "qrnn-with_end-3000" --project "$TPORT_USER/$PROJECT" --dataset
 Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
 
 ```sh
-tport run --name "han-with_end-3000" --project "$TPORT_USER/$PROJECT" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_han" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m"
+tport run --name "han-with_end-3000" --project "$TPORT_USER/$PROJECT:$(git rev-parse HEAD)" --datasets "$TPORT_USER/$DATASET" --package-path "src.rnn" --module "text_classification_model_han" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m" --description ""
 ```
