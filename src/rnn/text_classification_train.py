@@ -286,7 +286,7 @@ def main(model, name, sentence_split=False, end_sequence=USE_END_SEQUENCE, batch
         evaluator.run()
     else:
         # training
-        task_spec = get_task_spec(with_evaluator=True) 
+        task_spec = get_task_spec(with_evaluator=USE_LAST_WORKER_FOR_VALIDATION)
         if task_spec.join_if_ps():
             # join if it is a parameters server and do nothing else
             return
