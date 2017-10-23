@@ -60,6 +60,8 @@ D2V_DOC_LEARNING_RATE_DECAY_STEPS = 2000  # steps to decay the learning rate
 
 # text classification
 
+USE_LAST_WORKER_FOR_VALIDATION = False  # whether or not to use the last worker for validation in distributed training
+
 TD_DATA_SENTENCE_REMOVE_PERCENTAGE = 0.05  # ratio of sentences to delete from the samples
 TC_EPOCHS = 1  # iterations over the whole dataset
 TC_BATCH_SIZE = 24  # batch size for the training
