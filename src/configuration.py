@@ -61,7 +61,7 @@ D2V_DOC_LEARNING_RATE_DECAY_STEPS = 2000  # steps to decay the learning rate
 # text classification
 
 TD_DATA_SENTENCE_REMOVE_PERCENTAGE = 0.05  # ratio of sentences to delete from the samples
-TC_EPOCHS = 100  # iterations over the whole dataset
+TC_EPOCHS = 20  # iterations over the whole dataset
 TC_BATCH_SIZE = 24  # batch size for the training
 TC_MODEL_HIDDEN = 200  # hidden GRUCells for the model
 TC_MODEL_LAYERS = 3  # number of layers of the model
@@ -71,6 +71,8 @@ TC_LEARNING_RATE_DECAY = 0.85  # decay of learning rate
 TC_LEARNING_RATE_DECAY_STEPS = 1000  # steps to decay the learning rate
 TC_CNN_FILTERS = 50  # number of dimensions of the cnn network
 TC_CNN_LAYERS = 2  # number of layers of the cnn network
+TC_QRNN_CNN_LAYERS = 3  # number of layers of the cnn network
+TC_QRNN_CNN_FILTERS = 50  # number of dimensions of the cnn network, it has to be > 2
 TC_HATT_WORD_OUTPUT_SIZE = 200  # number of words outputs size for the hatt model
 TC_HATT_SENTENCE_OUTPUT_SIZE = 200  # number of sentences outputs size for the hatt model
 
