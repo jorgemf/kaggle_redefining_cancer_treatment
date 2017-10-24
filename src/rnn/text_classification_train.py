@@ -292,7 +292,7 @@ def main(model, name, sentence_split=False, end_sequence=USE_END_SEQUENCE, batch
             return
 
         with(tf.gfile.Open(os.path.join(DIR_DATA_TEXT_CLASSIFICATION, 'train_set'))) as f:
-            max_steps = TC_EPOCHS * len(f.readlines())
+            max_steps = int(TC_EPOCHS * len(f.readlines()) / batch_size)
 
         if task_spec.is_evaluator():
             dataset = TextClassificationDataset(type='val', sentence_split=sentence_split)
