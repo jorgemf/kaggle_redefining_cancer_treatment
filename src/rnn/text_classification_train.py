@@ -31,13 +31,13 @@ class TextClassificationTrainer(trainer.Trainer):
     """
 
     def __init__(self, dataset, text_classification_model, log_dir=DIR_TC_LOGDIR,
-                 use_end_sequence=False, task_spec=None):
+                 use_end_sequence=False, task_spec=None, max_steps=None):
         self.text_classification_model = text_classification_model
         self.use_end_sequence = use_end_sequence
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         super(TextClassificationTrainer, self).__init__(log_dir=log_dir, dataset=dataset,
-                                                        task_spec=task_spec,
+                                                        task_spec=task_spec, max_steps=max_steps,
                                                         monitored_training_session_config=config)
 
     def model(self, input_text_begin, input_text_end, gene, variation, expected_labels, batch_size,
@@ -103,12 +103,12 @@ class TextClassificationTest(evaluator.Evaluator):
     """Evaluator for distributed training"""
 
     def __init__(self, dataset, text_classification_model, output_path, log_dir=DIR_TC_LOGDIR,
-                 use_end_sequence=False):
+                 use_end_sequence=False,max_steps=None):
         self.use_end_sequence = use_end_sequence
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         super(TextClassificationTest, self).__init__(checkpoints_dir=log_dir, dataset=dataset,
-                                                     output_path=output_path,
+                                                     output_path=output_path, max_steps=max_steps,
                                                      singular_monitored_session_config=config)
         self.text_classification_model = text_classification_model
         self.eval_writer = tf.summary.FileWriter(log_dir)
@@ -291,17 +291,21 @@ def main(model, name, sentence_split=False, end_sequence=USE_END_SEQUENCE, batch
             # join if it is a parameters server and do nothing else
             return
 
+        with(tf.gfile.Open(os.path.join(DIR_DATA_TEXT_CLASSIFICATION, 'train_set'))) as f:
+            max_steps = TC_EPOCHS * len(f.readlines())
+
         if task_spec.is_evaluator():
             dataset = TextClassificationDataset(type='val', sentence_split=sentence_split)
             # evaluator running in the last worker
             tester = TextClassificationTest(dataset=dataset, text_classification_model=model,
                                             log_dir=log_dir,
                                             output_path=os.path.join(log_dir, 'val'),
-                                            use_end_sequence=end_sequence)
+                                            use_end_sequence=end_sequence,
+                                            max_steps=max_steps)
             tester.run()
         else:
             dataset = TextClassificationDataset(type='train', sentence_split=sentence_split)
             trainer = TextClassificationTrainer(dataset=dataset, text_classification_model=model,
                                                 log_dir=log_dir, use_end_sequence=end_sequence,
-                                                task_spec=task_spec)
+                                                task_spec=task_spec, max_steps=max_steps)
             trainer.run(epochs=TC_EPOCHS, batch_size=batch_size)

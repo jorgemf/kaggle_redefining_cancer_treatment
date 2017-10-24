@@ -17,7 +17,7 @@ class Evaluator(session_run_hook.SessionRunHook):
     SessionRunHook and it is added to the hooks in the SingularMonitoredSession
     """
 
-    def __init__(self, checkpoints_dir, output_path, max_time=None,
+    def __init__(self, checkpoints_dir, output_path, max_time=None, max_steps=None,
                  singular_monitored_session_config=None, infinite_loop=True, dataset=None):
         """
         :param str checkpoints_dir: directory with the checkpoints, this should be the log_dir
@@ -38,6 +38,7 @@ class Evaluator(session_run_hook.SessionRunHook):
         self.lastest_checkpoint = None
         self.summary_writer = tf.summary.FileWriter(output_path)
         self.output_path = output_path
+        self.max_steps = max_steps
 
     def run(self, batch_size=1, epochs=1):
         while True:
@@ -64,7 +65,9 @@ class Evaluator(session_run_hook.SessionRunHook):
                     except OutOfRangeError:
                         pass
                 logging.info('Evaluation finished')
-            if not self.infinite_loop:
+
+            step = int(self.lastest_checkpoint.split('-')[-1])
+            if not self.infinite_loop or (self.max_steps is not None and step >= self.max_steps):
                 break
 
     def after_create_session(self, session, coord):
