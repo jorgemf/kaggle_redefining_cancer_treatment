@@ -141,4 +141,4 @@ class ModelHAN(ModelSimple):
 
 
 if __name__ == '__main__':
-    main(ModelHAN(), 'han', sentence_split=True, batch_size=TC_BATCH_SIZE_HATT)
+    main(ModelHAN(), 'han', sentence_split=True, batch_size=TC_BATCH_SIZE)

@@ -119,7 +119,7 @@ We use a similar setup as in Word2Vec for the training phase. To prediction whet
 
 The first RNN model we are going to test is a basic RNN model with 3 layers of 200 GRU cells each layer
 
-We train the model for 20 epochs with a batch size of 24 and a learning rate of 0.001 with 0.85 decay every 1000 steps. These parameters are used in the rest of the deep learning models.
+We train the model for 10 epochs with a batch size of 24 and a learning rate of 0.001 with 0.85 decay every 1000 steps. With these parameters some models we tested overfitted between epochs 11 and 15. These parameters are used in the rest of the deep learning models.
 
 We use this model to test how the length of the sequences affect the performance. We test sequences with the first 1000, 2000, 3000, 5000 and 10000 words. We want to check whether adding the last part, what we think are the conclusions of the paper, makes any improvements, so we also tested this model with the first and last 3000 words. 
 
@@ -137,15 +137,11 @@ This model only contains two layers of 200 GRU cells, one with the normal order 
 
 This model is 2 stacked CNN layers with 50 filters and a kernel size of 5 that process the sequence before feeding a one layer RNN with 200 GRU cells.
 
-### QRNN
-
-This model is based in the model of [Quasi-Recurrent Neural Networks](https://arxiv.org/abs/1611.01576) with 3 layers and 50 filters in the convolution.
-
 ### HAN
 
 This model is based in the model of [Hierarchical Attention Networks (HAN) for Document Classification](https://www.cs.cmu.edu/~diyiy/docs/naacl16.pdf) but we have replaced the context vector by the embeddings of the variation and the gene. This is, instead of learning the context vector as in the original model we provide the context information we already have.
 
-As this model uses the gene and variation in the context vector of the attention we do not use the same full connected layer to make the predictions as in the other models. We use a simple full connected layer with a softmax activation function.
+As this model uses the gene and variation in the context vector of the attention we do not use the same full connected layer to make the predictions as in the other models. We use a simple full connected layer with a softmax activation function. A input we use a maximum of 150 sentences with 40 words per sentence (maximum 6000 words), gaps are filled with zeros.
 
 ## Results
 
@@ -176,35 +172,44 @@ First, we wanted to analyze how the length of the text affected the loss of the 
 
 | Algorithm | Validation Loss | Validation Accuracy | Steps per second |
 |-|:-:|:-:|:-:|
-| First 1000 words                      |   |   |   |
-| First 2000 words                      |   |   |   |
-| First 3000 words                      |   |   |   |
-| First 5000 words                      |   |   |   |
-| First 10000 words                     |   |   |   |
-| First 3000 words + Last 3000 words    |   |   |   |
+| First 1000 words                      | 1.61 | 37.2% | 0.97 |
+| First 2000 words                      | 1.91 | 29.6% | 0.47 |
+| First 3000 words                      | 1.94 | 28.8% | 0.31 |
+| First 5000 words                      | 1.86 | 29.9% | 0.19 |
+| First 10000 words                     | 1.70 | 41.9% | 0.09 |
+| First 3000 words + Last 3000 words    | 1.95 | 29.4% | 0.14 |
 
-A relative short text was getting better results than using longer text. It was also much faster than. We think this could be because longer sequences make the GRU cells to forget the initial part of the sequence, which could be more relevant for the classification, or because longer sequences had more noise and the model cannot learn anything or trends to overfit the training set. Using the last part of the text also improved the models. We used this variant with the initial and final text for training different models:
+Results are very similar for all cases, but the experiment with less words gets the best loss while the experiment with more words gets the best accuracy in the validation set. In all cases the number of steps per second is inversely proportional to the number of words in the input. More words require more time per step.
+
+To compare different models we decided to use the model with 3000 words that used also the last words. This is the biggest model that fit in memory in our GPUs. These are the results:
 
 | Algorithm | Validation Loss | Validation Accuracy | Steps per second |
 |-|:-:|:-:|:-:|
-| Doc2Vec                           | 1.56 | 47.96%  | - |
-| 3-layer GRU                       |   |   |   |
-| Bidirectional GRU                 |   |   |   |
-| CNN + GRU                         |   |   |   |
-| QRNN                              |   |   |   |
-| HAN + gene-variation context      |   |   |   |
+| Doc2Vec                           | 1.56 | 47.9% | - |
+| 3-layer GRU                       | 1.95 | 29.4% | 0.31 |
+| Bidirectional GRU                 | 2.08 | 20.4% | 0.21 |
+| CNN + GRU                         | 1.99 | 23.2% | 0.15 |
+| HAN + gene-variation context      | 1.60 | 41.0% | 1.58 |
 
-In the next image we show how the embeddings of the documents in doc2vec are mapped into a 3d space where each class is represented by a different color. We don't appreciate any clear aggrupation of the classes.
+It seems that the bidirectional model and the CNN model perform very similar to the base model. The HAN model seems to get the best results with a good loss and goo accuracy, although the Doc2Vec model outperforms this numbers. The HAN model is much faster than the other models due to use shorter sequences for the GRU layers.
+
+In the next image we show how the embeddings of the documents in doc2vec are mapped into a 3d space where each class is represented by a different color. We don't appreciate any clear aggrupation of the classes, regardless it was the best algorithm in our tests:
 
 ![Doc2Vec doc embeddings classes](https://raw.githubusercontent.com/jorgemf/kaggle_redefining_cancer_treatment/master/img/doc2vec_doc_embeddings.png "Doc2Vec doc embeddings classes")
 
 ### Jupyter notebook
 
-Similar to the previous model but with a different way to apply the attention I created a kernel in kaggle for the competition: [RNN + GRU + bidirectional + Attentional context](https://www.kaggle.com/jorgemf/rnn-gru-bidirectional-attentional-context). The network was trained for 4 epochs with the training and validation sets and submitted the results to kaggle. I used both the training and validation sets in order to increase the final training set and get better results. The 4 epochs were chosen because in previous experiments the model was overfitting after the 4th epoch. It scored 0.93 in the public leaderboard and 2.8 in the private leaderboard.
+Similar to the previous model but with a different way to apply the attention we created a kernel in kaggle for the competition: [RNN + GRU + bidirectional + Attentional context](https://www.kaggle.com/jorgemf/rnn-gru-bidirectional-attentional-context). The network was trained for 4 epochs with the training and validation sets and submitted the results to kaggle. I used both the training and validation sets in order to increase the final training set and get better results. The 4 epochs were chosen because in previous experiments the model was overfitting after the 4th epoch. It scored 0.93 in the public leaderboard and 2.8 in the private leaderboard. Public leaderboard was usually 0.5 points better in the loss compared to the validation set.
 
 The confusion matrix shows a relation between the classes 1 and 4 and also between the classes 2 and 7. The classes 3, 8 and 9 have so few examples in the datasets (less than 100 in the training set) that the model didn't learn them.
 
 ![Confusion matrix](https://raw.githubusercontent.com/jorgemf/kaggle_redefining_cancer_treatment/master/img/confusion_matrix.png "Confusion matrix")
+
+## Discussion
+
+Giver all the results we observe that non-deep learning models perform better than deep learning models. It could be to the problem of RNN to generalize with long sequences and the ability of non-deep learning methods to extract more relevant information regardless of the text length. The hierarchical model may get better results than other deep learning models because of its structure in hierarchical layers that might be able to extract better information.
+
+The number of examples for training are not enough for deep learning models and the noise in the data might be making the algorithms to overfit to the training set and to not extract the right information among all the noise.
 
 ## Conclusions
 
