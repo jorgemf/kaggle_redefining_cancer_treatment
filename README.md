@@ -1,4 +1,4 @@
-> [Read this in medium](https://medium.com/@jorgemf/personalized-medicine-redefining-cancer-treatment-by-deep-learning-f6c64a366fff)
+> [Read this in medium](https://medium.com/@jorgemf/personalized-medicine-redefining-cancer-treatment-with-deep-learning-f6c64a366fff)
 
 > Disclaimer: This work has been supported by [Good AI](http://goodailab.com) Lab and all the experiments has been trained using their platform [TensorPort](https://tensorport.com).
 
@@ -488,14 +488,6 @@ Launch a job in TensorPort. You have to select the last commit (number 0). The l
 
 ```sh
 tport run --name "cnn-with_end-3000" --project "$TPORT_USER/$PROJECT:$(git rev-parse HEAD)" --datasets "$TPORT_USER/$DATASET:$(cd data/generated/ && git rev-parse HEAD)" --package-path "src.rnn" --module "text_classification_model_cnn" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m" --description ""
-```
-
-#### QRNN
-
-Launch a job in TensorPort. You have to select the last commit (number 0). The last worker is used for validation, you can check the results in the logs.
-
-```sh
-tport run --name "qrnn-with_end-3000" --project "$TPORT_USER/$PROJECT:$(git rev-parse HEAD)" --datasets "$TPORT_USER/$DATASET:$(cd data/generated/ && git rev-parse HEAD)" --package-path "src.rnn" --module "text_classification_model_qrnn" --python-version 2 --tf-version "1.2.0" --requirements "requirements.txt" --distributed --worker-replicas 4 --worker-type "p2.xlarge" --ps-replicas 3 --ps-type "t2.small" --time-limit "24h00m" --description ""
 ```
 
 #### HAN
