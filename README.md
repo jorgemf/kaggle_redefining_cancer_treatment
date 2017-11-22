@@ -24,7 +24,7 @@ In the next sections, we will see related work in text classification, including
 
 The classic methods for text classification are based on [bag of words](https://en.wikipedia.org/wiki/Bag-of-words_model) and [n-grams](https://en.wikipedia.org/wiki/N-gram). In both cases, sets of words are extracted from the text and are used to train a simple classifier, as it could be [xgboost](https://en.wikipedia.org/wiki/Xgboost) which it is very popular in kaggle competitions.
 
-There are variants of the previous algorithms, for example the [term frequency–inverse document frequency](https://en.wikipedia.org/wiki/Tf–idf), also knows as TF–idf, tries to discover which words are more important per each type of document.
+There are variants of the previous algorithms, for example the [term frequency–inverse document frequency](https://en.wikipedia.org/wiki/Tf–idf), also known as TF–idf, tries to discover which words are more important per each type of document.
 
 ### Word2Vector
 
@@ -33,7 +33,7 @@ There are variants of the previous algorithms, for example the [term frequency�
 Using the word representations provided by Word2Vec we can apply math operations to words and so, we can use algorithms like [Support Vector Machines (SVM)](https://arxiv.org/abs/1301.2785v1) or the deep learning algorithms we will see later. 
 
 There are two ways to train a Word2Vec model:
-[Continuous Bag-of-Words, also knows as CBOW, and the Skip-Gram](https://arxiv.org/abs/1301.3781). Given a context for a word, usually its adjacent words, we can predict the word with the context (CBOW) or predict the context with the word (Skip-Gram). Both algorithms are similar but Skip-Gram seems to [produce better results for large datasets](http://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf).
+[Continuous Bag-of-Words, also known as CBOW, and the Skip-Gram](https://arxiv.org/abs/1301.3781). Given a context for a word, usually its adjacent words, we can predict the word with the context (CBOW) or predict the context with the word (Skip-Gram). Both algorithms are similar but Skip-Gram seems to [produce better results for large datasets](http://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf).
 
 Besides the linear context we described before, another type of context as a [dependency-based context](https://levyomer.files.wordpress.com/2014/04/dependency-based-word-embeddings-acl-2014.pdf) can be used.
 
